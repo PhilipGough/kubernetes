@@ -17,6 +17,7 @@ limitations under the License.
 package metrics
 
 import (
+	"context"
 	"testing"
 
 	"k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 )
 
 func TestMetricCollection(t *testing.T) {
+	ctx := context.TODO()
 	fakeVolumePluginMgr, _ := volumetesting.GetTestVolumePluginMgr(t)
 	fakeClient := &fake.Clientset{}
 
@@ -58,7 +60,7 @@ func TestMetricCollection(t *testing.T) {
 		},
 	}
 
-	fakePodInformer.Informer().GetStore().Add(pod)
+	fakePodInformer.Informer(ctx).GetStore().Add(pod)
 	pvcInformer := fakeInformerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := fakeInformerFactory.Core().V1().PersistentVolumes()
 
@@ -98,12 +100,12 @@ func TestMetricCollection(t *testing.T) {
 			ClaimRef: &v1.ObjectReference{UID: "metric-test-pvc-1", Namespace: "metric-test"},
 		},
 	}
-	pvcInformer.Informer().GetStore().Add(pvc)
-	pvInformer.Informer().GetStore().Add(pv)
-	pvcLister := pvcInformer.Lister()
-	pvLister := pvInformer.Lister()
+	pvcInformer.Informer(ctx).GetStore().Add(pvc)
+	pvInformer.Informer(ctx).GetStore().Add(pv)
+	pvcLister := pvcInformer.Lister(ctx)
+	pvLister := pvInformer.Lister(ctx)
 
-	metricCollector := newVolumeInUseCollector(pvcLister, fakePodInformer.Lister(), pvLister, fakeVolumePluginMgr)
+	metricCollector := newVolumeInUseCollector(pvcLister, fakePodInformer.Lister(ctx), pvLister, fakeVolumePluginMgr)
 	nodeUseMap := metricCollector.getVolumeInUseCount()
 	if len(nodeUseMap) < 1 {
 		t.Errorf("Expected one volume in use got %d", len(nodeUseMap))

@@ -112,10 +112,10 @@ func (a *Webhook) SetExternalKubeClientSet(client clientset.Interface) {
 // SetExternalKubeInformerFactory implements the WantsExternalKubeInformerFactory interface.
 func (a *Webhook) SetExternalKubeInformerFactory(f informers.SharedInformerFactory) {
 	namespaceInformer := f.Core().V1().Namespaces()
-	a.namespaceMatcher.NamespaceLister = namespaceInformer.Lister()
+	a.namespaceMatcher.NamespaceLister = namespaceInformer.Lister(context.TODO())
 	a.hookSource = a.sourceFactory(f)
 	a.SetReadyFunc(func() bool {
-		return namespaceInformer.Informer().HasSynced() && a.hookSource.HasSynced()
+		return namespaceInformer.Informer(context.TODO()).HasSynced() && a.hookSource.HasSynced()
 	})
 }
 

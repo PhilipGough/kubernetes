@@ -20,6 +20,7 @@ limitations under the License.
 package app
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -489,15 +490,16 @@ func BuildGenericConfig(
 		return
 	}
 	versionedInformers = clientgoinformers.NewSharedInformerFactory(clientgoExternalClient, 10*time.Minute)
+	ctx := context.TODO()
 
 	if s.EnableAggregatorRouting {
 		serviceResolver = aggregatorapiserver.NewEndpointServiceResolver(
-			versionedInformers.Core().V1().Services().Lister(),
-			versionedInformers.Core().V1().Endpoints().Lister(),
+			versionedInformers.Core().V1().Services().Lister(ctx),
+			versionedInformers.Core().V1().Endpoints().Lister(ctx),
 		)
 	} else {
 		serviceResolver = aggregatorapiserver.NewClusterIPServiceResolver(
-			versionedInformers.Core().V1().Services().Lister(),
+			versionedInformers.Core().V1().Services().Lister(ctx),
 		)
 	}
 	// resolve kubernetes.default.svc locally
@@ -615,7 +617,7 @@ func BuildAuthenticator(s *options.ServerRunOptions, extclient clientgoclientset
 		authenticatorConfig.ServiceAccountTokenGetter = serviceaccountcontroller.NewGetterFromClient(extclient)
 	}
 	authenticatorConfig.BootstrapTokenAuthenticator = bootstrap.NewTokenAuthenticator(
-		sharedInformers.Core().InternalVersion().Secrets().Lister().Secrets(v1.NamespaceSystem),
+		sharedInformers.Core().InternalVersion().Secrets().Lister(context.TODO()).Secrets(v1.NamespaceSystem),
 	)
 
 	return authenticatorConfig.New()

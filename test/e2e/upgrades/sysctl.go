@@ -17,6 +17,7 @@ limitations under the License.
 package upgrades
 
 import (
+	"context"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
@@ -49,17 +50,18 @@ func (t *SysctlUpgradeTest) Setup(f *framework.Framework) {
 // Test waits for the upgrade to complete, and then verifies that a
 // pod can still consume the ConfigMap.
 func (t *SysctlUpgradeTest) Test(f *framework.Framework, done <-chan struct{}, upgrade UpgradeType) {
+	ctx := context.TODO()
 	<-done
 	switch upgrade {
 	case MasterUpgrade:
 		By("Checking the safe sysctl pod keeps running on master upgrade")
-		pod, err := f.ClientSet.CoreV1().Pods(t.validPod.Namespace).Get(t.validPod.Name, metav1.GetOptions{})
+		pod, err := f.ClientSet.CoreV1().Pods(t.validPod.Namespace).Get(ctx, t.validPod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pod.Status.Phase).To(Equal(v1.PodRunning))
 	}
 
 	By("Checking the old unsafe sysctl pod was not suddenly started during an upgrade")
-	pod, err := f.ClientSet.CoreV1().Pods(t.invalidPod.Namespace).Get(t.invalidPod.Name, metav1.GetOptions{})
+	pod, err := f.ClientSet.CoreV1().Pods(t.invalidPod.Namespace).Get(ctx, t.invalidPod.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		Expect(err).NotTo(HaveOccurred())
 	}

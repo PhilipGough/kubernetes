@@ -18,6 +18,7 @@ package framework
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -230,8 +231,9 @@ func NewResourceUsageGatherer(c clientset.Interface, options ResourceGathererOpt
 	} else {
 		// Tracks kube-system pods if no valid PodList is passed in.
 		var err error
+		ctx := context.TODO()
 		if pods == nil {
-			pods, err = c.CoreV1().Pods("kube-system").List(metav1.ListOptions{})
+			pods, err = c.CoreV1().Pods("kube-system").List(ctx, metav1.ListOptions{})
 			if err != nil {
 				Logf("Error while listing Pods: %v", err)
 				return nil, err
@@ -245,7 +247,7 @@ func NewResourceUsageGatherer(c clientset.Interface, options ResourceGathererOpt
 				g.containerIDs = append(g.containerIDs, container.Name)
 			}
 		}
-		nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+		nodeList, err := c.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			Logf("Error while listing Nodes: %v", err)
 			return nil, err

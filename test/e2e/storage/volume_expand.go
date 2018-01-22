@@ -17,6 +17,7 @@ limitations under the License.
 package storage
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -49,6 +50,7 @@ var _ = utils.SIGDescribe("Volume expand [Slow]", func() {
 	)
 
 	f := framework.NewDefaultFramework("volume-expand")
+	ctx := context.TODO()
 	BeforeEach(func() {
 		framework.SkipUnlessProviderIs("aws", "gce")
 		c = f.ClientSet
@@ -65,13 +67,13 @@ var _ = utils.SIGDescribe("Volume expand [Slow]", func() {
 
 		pvc = newClaim(test, ns, "default")
 		pvc.Spec.StorageClassName = &resizableSc.Name
-		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc)
 		Expect(err).NotTo(HaveOccurred(), "Error creating pvc")
 	})
 
 	AfterEach(func() {
 		framework.ExpectNoError(framework.DeletePersistentVolumeClaim(c, pvc.Name, pvc.Namespace))
-		framework.ExpectNoError(c.StorageV1().StorageClasses().Delete(resizableSc.Name, nil))
+		framework.ExpectNoError(c.StorageV1().StorageClasses().Delete(ctx, resizableSc.Name, nil))
 	})
 
 	It("Verify if editing PVC allows resize", func() {
@@ -105,7 +107,7 @@ var _ = utils.SIGDescribe("Volume expand [Slow]", func() {
 		Expect(err).NotTo(HaveOccurred(), "While waiting for pvc resize to finish")
 
 		By("Checking for conditions on pvc")
-		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get(pvc.Name, metav1.GetOptions{})
+		pvc, err = c.CoreV1().PersistentVolumeClaims(ns).Get(ctx, pvc.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "While fetching pvc after controller resize")
 
 		inProgressConditions := pvc.Status.Conditions
@@ -139,23 +141,24 @@ func createResizableStorageClass(t storageClassTest, ns string, suffix string, c
 	stKlass.AllowVolumeExpansion = &allowExpansion
 
 	var err error
-	stKlass, err = c.StorageV1().StorageClasses().Create(stKlass)
+	stKlass, err = c.StorageV1().StorageClasses().Create(context.TODO(), stKlass)
 	return stKlass, err
 }
 
 func expandPVCSize(origPVC *v1.PersistentVolumeClaim, size resource.Quantity, c clientset.Interface) (*v1.PersistentVolumeClaim, error) {
 	pvcName := origPVC.Name
 	updatedPVC := origPVC.DeepCopy()
+	ctx := context.TODO()
 
 	waitErr := wait.PollImmediate(resizePollInterval, 30*time.Second, func() (bool, error) {
 		var err error
-		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(origPVC.Namespace).Get(pvcName, metav1.GetOptions{})
+		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(origPVC.Namespace).Get(ctx, pvcName, metav1.GetOptions{})
 		if err != nil {
 			return false, fmt.Errorf("error fetching pvc %q for resizing with %v", pvcName, err)
 		}
 
 		updatedPVC.Spec.Resources.Requests[v1.ResourceStorage] = size
-		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(origPVC.Namespace).Update(updatedPVC)
+		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(origPVC.Namespace).Update(ctx, updatedPVC)
 		if err == nil {
 			return true, nil
 		}
@@ -170,7 +173,7 @@ func waitForControllerVolumeResize(pvc *v1.PersistentVolumeClaim, c clientset.In
 	return wait.PollImmediate(resizePollInterval, totalResizeWaitPeriod, func() (bool, error) {
 		pvcSize := pvc.Spec.Resources.Requests[v1.ResourceStorage]
 
-		pv, err := c.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		pv, err := c.CoreV1().PersistentVolumes().Get(context.TODO(), pvName, metav1.GetOptions{})
 		if err != nil {
 			return false, fmt.Errorf("error fetching pv %q for resizing %v", pvName, err)
 		}
@@ -189,7 +192,7 @@ func waitForFSResize(pvc *v1.PersistentVolumeClaim, c clientset.Interface) (*v1.
 	var updatedPVC *v1.PersistentVolumeClaim
 	waitErr := wait.PollImmediate(resizePollInterval, totalResizeWaitPeriod, func() (bool, error) {
 		var err error
-		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+		updatedPVC, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.TODO(), pvc.Name, metav1.GetOptions{})
 
 		if err != nil {
 			return false, fmt.Errorf("error fetching pvc %q for checking for resize status : %v", pvc.Name, err)

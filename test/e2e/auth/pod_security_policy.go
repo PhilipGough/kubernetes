@@ -17,6 +17,7 @@ limitations under the License.
 package auth
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/api/core/v1"
@@ -44,6 +45,7 @@ import (
 var _ = SIGDescribe("PodSecurityPolicy", func() {
 	f := framework.NewDefaultFramework("podsecuritypolicy")
 	f.SkipPrivilegedPSPBinding = true
+	ctx := context.TODO()
 
 	// Client that will impersonate the default service account, in order to run
 	// with reduced privileges.
@@ -75,7 +77,7 @@ var _ = SIGDescribe("PodSecurityPolicy", func() {
 
 	It("should forbid pod creation when no PSP is available", func() {
 		By("Running a restricted pod")
-		_, err := c.CoreV1().Pods(ns).Create(restrictedPod(f, "restricted"))
+		_, err := c.CoreV1().Pods(ns).Create(ctx, restrictedPod(f, "restricted"))
 		expectForbidden(err)
 	})
 
@@ -87,12 +89,12 @@ var _ = SIGDescribe("PodSecurityPolicy", func() {
 		defer cleanup()
 
 		By("Running a restricted pod")
-		pod, err := c.CoreV1().Pods(ns).Create(restrictedPod(f, "allowed"))
+		pod, err := c.CoreV1().Pods(ns).Create(ctx, restrictedPod(f, "allowed"))
 		framework.ExpectNoError(err)
 		framework.ExpectNoError(framework.WaitForPodNameRunningInNamespace(c, pod.Name, pod.Namespace))
 
 		testPrivilegedPods(f, func(pod *v1.Pod) {
-			_, err := c.CoreV1().Pods(ns).Create(pod)
+			_, err := c.CoreV1().Pods(ns).Create(ctx, pod)
 			expectForbidden(err)
 		})
 	})
@@ -103,12 +105,12 @@ var _ = SIGDescribe("PodSecurityPolicy", func() {
 		defer cleanup()
 
 		By("Running a restricted pod")
-		pod, err := c.CoreV1().Pods(ns).Create(restrictedPod(f, "allowed"))
+		pod, err := c.CoreV1().Pods(ns).Create(ctx, restrictedPod(f, "allowed"))
 		framework.ExpectNoError(err)
 		framework.ExpectNoError(framework.WaitForPodNameRunningInNamespace(c, pod.Name, pod.Namespace))
 
 		testPrivilegedPods(f, func(pod *v1.Pod) {
-			_, err := c.CoreV1().Pods(ns).Create(pod)
+			_, err := c.CoreV1().Pods(ns).Create(ctx, pod)
 			expectForbidden(err)
 		})
 	})
@@ -122,12 +124,12 @@ var _ = SIGDescribe("PodSecurityPolicy", func() {
 		defer cleanup()
 
 		testPrivilegedPods(f, func(pod *v1.Pod) {
-			p, err := c.CoreV1().Pods(ns).Create(pod)
+			p, err := c.CoreV1().Pods(ns).Create(ctx, pod)
 			framework.ExpectNoError(err)
 			framework.ExpectNoError(framework.WaitForPodNameRunningInNamespace(c, p.Name, p.Namespace))
 
 			// Verify expected PSP was used.
-			p, err = c.CoreV1().Pods(ns).Get(p.Name, metav1.GetOptions{})
+			p, err = c.CoreV1().Pods(ns).Get(ctx, p.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err)
 			validated, found := p.Annotations[psputil.ValidatedPSPAnnotation]
 			Expect(found).To(BeTrue(), "PSP annotation not found")
@@ -144,12 +146,12 @@ var _ = SIGDescribe("PodSecurityPolicy", func() {
 		defer cleanup()
 
 		testPrivilegedPods(f, func(pod *v1.Pod) {
-			p, err := c.CoreV1().Pods(ns).Create(pod)
+			p, err := c.CoreV1().Pods(ns).Create(ctx, pod)
 			framework.ExpectNoError(err)
 			framework.ExpectNoError(framework.WaitForPodNameRunningInNamespace(c, p.Name, p.Namespace))
 
 			// Verify expected PSP was used.
-			p, err = c.CoreV1().Pods(ns).Get(p.Name, metav1.GetOptions{})
+			p, err = c.CoreV1().Pods(ns).Get(ctx, p.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err)
 			validated, found := p.Annotations[psputil.ValidatedPSPAnnotation]
 			Expect(found).To(BeTrue(), "PSP annotation not found")
@@ -236,11 +238,12 @@ func createAndBindPSP(f *framework.Framework, pspTemplate *extensionsv1beta1.Pod
 	ns := f.Namespace.Name
 	name := fmt.Sprintf("%s-%s", ns, psp.Name)
 	psp.Name = name
-	psp, err := f.ClientSet.ExtensionsV1beta1().PodSecurityPolicies().Create(psp)
+	psp, err := f.ClientSet.ExtensionsV1beta1().PodSecurityPolicies().Create(context.TODO(), psp)
 	framework.ExpectNoError(err, "Failed to create PSP")
+	ctx := context.TODO()
 
 	// Create the Role to bind it to the namespace.
-	_, err = f.ClientSet.RbacV1beta1().Roles(ns).Create(&rbacv1beta1.Role{
+	_, err = f.ClientSet.RbacV1beta1().Roles(ns).Create(ctx, &rbacv1beta1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -265,24 +268,25 @@ func createAndBindPSP(f *framework.Framework, pspTemplate *extensionsv1beta1.Pod
 
 	return psp, func() {
 		// Cleanup non-namespaced PSP object.
-		f.ClientSet.ExtensionsV1beta1().PodSecurityPolicies().Delete(name, &metav1.DeleteOptions{})
+		f.ClientSet.ExtensionsV1beta1().PodSecurityPolicies().Delete(ctx, name, &metav1.DeleteOptions{})
 	}
 }
 
 // createAndBindPSPInPolicy creates a PSP in the policy API group (unlike createAndBindPSP()).
 // TODO: merge these functions when PSP will be completely moved out of the extensions
 func createAndBindPSPInPolicy(f *framework.Framework, pspTemplate *policy.PodSecurityPolicy) (psp *policy.PodSecurityPolicy, cleanup func()) {
+	ctx := context.TODO()
 	// Create the PodSecurityPolicy object.
 	psp = pspTemplate.DeepCopy()
 	// Add the namespace to the name to ensure uniqueness and tie it to the namespace.
 	ns := f.Namespace.Name
 	name := fmt.Sprintf("%s-%s", ns, psp.Name)
 	psp.Name = name
-	psp, err := f.ClientSet.PolicyV1beta1().PodSecurityPolicies().Create(psp)
+	psp, err := f.ClientSet.PolicyV1beta1().PodSecurityPolicies().Create(ctx, psp)
 	framework.ExpectNoError(err, "Failed to create PSP")
 
 	// Create the Role to bind it to the namespace.
-	_, err = f.ClientSet.RbacV1beta1().Roles(ns).Create(&rbacv1beta1.Role{
+	_, err = f.ClientSet.RbacV1beta1().Roles(ns).Create(ctx, &rbacv1beta1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -307,7 +311,7 @@ func createAndBindPSPInPolicy(f *framework.Framework, pspTemplate *policy.PodSec
 
 	return psp, func() {
 		// Cleanup non-namespaced PSP object.
-		f.ClientSet.PolicyV1beta1().PodSecurityPolicies().Delete(name, &metav1.DeleteOptions{})
+		f.ClientSet.PolicyV1beta1().PodSecurityPolicies().Delete(ctx, name, &metav1.DeleteOptions{})
 	}
 }
 

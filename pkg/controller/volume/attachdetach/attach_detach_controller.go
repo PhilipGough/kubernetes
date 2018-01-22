@@ -19,6 +19,7 @@ limitations under the License.
 package attachdetach
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -118,16 +119,17 @@ func NewAttachDetachController(
 	// and set a faster resync period even if it causes relist, or requeue
 	// dropped pods so they are continuously processed until it is accepted or
 	// deleted (probably can't do this with sharedInformer), etc.
+	ctx := context.TODO()
 	adc := &attachDetachController{
 		kubeClient:  kubeClient,
-		pvcLister:   pvcInformer.Lister(),
-		pvcsSynced:  pvcInformer.Informer().HasSynced,
-		pvLister:    pvInformer.Lister(),
-		pvsSynced:   pvInformer.Informer().HasSynced,
-		podLister:   podInformer.Lister(),
-		podsSynced:  podInformer.Informer().HasSynced,
-		nodeLister:  nodeInformer.Lister(),
-		nodesSynced: nodeInformer.Informer().HasSynced,
+		pvcLister:   pvcInformer.Lister(ctx),
+		pvcsSynced:  pvcInformer.Informer(ctx).HasSynced,
+		pvLister:    pvInformer.Lister(ctx),
+		pvsSynced:   pvInformer.Informer(ctx).HasSynced,
+		podLister:   podInformer.Lister(ctx),
+		podsSynced:  podInformer.Informer(ctx).HasSynced,
+		nodeLister:  nodeInformer.Lister(ctx),
+		nodesSynced: nodeInformer.Informer(ctx).HasSynced,
 		cloud:       cloud,
 	}
 
@@ -151,7 +153,7 @@ func NewAttachDetachController(
 			false, // flag for experimental binary check for volume mount
 			blkutil))
 	adc.nodeStatusUpdater = statusupdater.NewNodeStatusUpdater(
-		kubeClient, nodeInformer.Lister(), adc.actualStateOfWorld)
+		kubeClient, nodeInformer.Lister(ctx), adc.actualStateOfWorld)
 
 	// Default these to values in options
 	adc.reconciler = reconciler.NewReconciler(
@@ -168,19 +170,19 @@ func NewAttachDetachController(
 	adc.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
 		timerConfig.DesiredStateOfWorldPopulatorLoopSleepPeriod,
 		timerConfig.DesiredStateOfWorldPopulatorListPodsRetryDuration,
-		podInformer.Lister(),
+		podInformer.Lister(ctx),
 		adc.desiredStateOfWorld,
 		&adc.volumePluginMgr,
-		pvcInformer.Lister(),
-		pvInformer.Lister())
+		pvcInformer.Lister(ctx),
+		pvInformer.Lister(ctx))
 
-	podInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
+	podInformer.Informer(ctx).AddEventHandler(kcache.ResourceEventHandlerFuncs{
 		AddFunc:    adc.podAdd,
 		UpdateFunc: adc.podUpdate,
 		DeleteFunc: adc.podDelete,
 	})
 
-	nodeInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
+	nodeInformer.Informer(ctx).AddEventHandler(kcache.ResourceEventHandlerFuncs{
 		AddFunc:    adc.nodeAdd,
 		UpdateFunc: adc.nodeUpdate,
 		DeleteFunc: adc.nodeDelete,

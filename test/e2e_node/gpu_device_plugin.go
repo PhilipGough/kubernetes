@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_node
 
 import (
+	"context"
 	"os/exec"
 	"strconv"
 	"time"
@@ -39,6 +40,7 @@ const (
 // Serial because the test restarts Kubelet
 var _ = framework.KubeDescribe("NVIDIA GPU Device Plugin [Feature:GPUDevicePlugin][NodeFeature:GPUDevicePlugin][Serial] [Disruptive]", func() {
 	f := framework.NewDefaultFramework("device-plugin-gpus-errors")
+	ctx := context.TODO()
 
 	Context("DevicePlugin", func() {
 		var devicePluginPod *v1.Pod
@@ -62,7 +64,7 @@ var _ = framework.KubeDescribe("NVIDIA GPU Device Plugin [Feature:GPUDevicePlugi
 		})
 
 		AfterEach(func() {
-			l, err := f.PodClient().List(metav1.ListOptions{})
+			l, err := f.PodClient().List(ctx, metav1.ListOptions{})
 			framework.ExpectNoError(err)
 
 			for _, p := range l.Items {
@@ -70,7 +72,7 @@ var _ = framework.KubeDescribe("NVIDIA GPU Device Plugin [Feature:GPUDevicePlugi
 					continue
 				}
 
-				f.PodClient().Delete(p.Name, &metav1.DeleteOptions{})
+				f.PodClient().Delete(ctx, p.Name, &metav1.DeleteOptions{})
 			}
 		})
 
@@ -81,7 +83,7 @@ var _ = framework.KubeDescribe("NVIDIA GPU Device Plugin [Feature:GPUDevicePlugi
 
 			deviceIDRE := "gpu devices: (nvidia[0-9]+)"
 			devId1 := parseLog(f, p1.Name, p1.Name, deviceIDRE)
-			p1, err := f.PodClient().Get(p1.Name, metav1.GetOptions{})
+			p1, err := f.PodClient().Get(ctx, p1.Name, metav1.GetOptions{})
 			framework.ExpectNoError(err)
 
 			By("Restarting Kubelet and waiting for the current running pod to restart")
@@ -106,10 +108,10 @@ var _ = framework.KubeDescribe("NVIDIA GPU Device Plugin [Feature:GPUDevicePlugi
 			Expect(devId1).To(Not(Equal(devId2)))
 
 			By("Deleting device plugin.")
-			f.PodClient().Delete(devicePluginPod.Name, &metav1.DeleteOptions{})
+			f.PodClient().Delete(ctx, devicePluginPod.Name, &metav1.DeleteOptions{})
 			By("Waiting for GPUs to become unavailable on the local node")
 			Eventually(func() bool {
-				node, err := f.ClientSet.CoreV1().Nodes().Get(framework.TestContext.NodeName, metav1.GetOptions{})
+				node, err := f.ClientSet.CoreV1().Nodes().Get(ctx, framework.TestContext.NodeName, metav1.GetOptions{})
 				framework.ExpectNoError(err)
 				return framework.NumberOfNVIDIAGPUs(node) <= 0
 			}, 10*time.Minute, framework.Poll).Should(BeTrue())

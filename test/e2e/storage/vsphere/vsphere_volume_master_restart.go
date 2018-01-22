@@ -17,6 +17,7 @@ limitations under the License.
 package vsphere
 
 import (
+	"context"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
@@ -80,6 +81,7 @@ var _ = utils.SIGDescribe("Volume Attach Verify [Feature:vsphere][Serial][Disrup
 	})
 
 	It("verify volume remains attached after master kubelet restart", func() {
+		ctx := context.TODO()
 		// Create pod on each node
 		for i := 0; i < numNodes; i++ {
 			By(fmt.Sprintf("%d: Creating a test vsphere volume", i))
@@ -89,14 +91,14 @@ var _ = utils.SIGDescribe("Volume Attach Verify [Feature:vsphere][Serial][Disrup
 
 			By(fmt.Sprintf("Creating pod %d on node %v", i, nodeNameList[i]))
 			podspec := getVSpherePodSpecWithVolumePaths([]string{volumePath}, nodeKeyValueLabelList[i], nil)
-			pod, err := client.CoreV1().Pods(namespace).Create(podspec)
+			pod, err := client.CoreV1().Pods(namespace).Create(ctx, podspec)
 			Expect(err).NotTo(HaveOccurred())
 			defer framework.DeletePodWithWait(f, client, pod)
 
 			By("Waiting for pod to be ready")
 			Expect(framework.WaitForPodNameRunningInNamespace(client, pod.Name, namespace)).To(Succeed())
 
-			pod, err = client.CoreV1().Pods(namespace).Get(pod.Name, metav1.GetOptions{})
+			pod, err = client.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
 			pods = append(pods, pod)

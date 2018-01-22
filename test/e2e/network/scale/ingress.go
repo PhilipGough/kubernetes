@@ -17,6 +17,7 @@ limitations under the License.
 package scale
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"sync"
@@ -126,11 +127,12 @@ func (f *IngressScaleFramework) PrepareScaleTest() error {
 // CleanupScaleTest cleans up framework for ingress scale testing.
 func (f *IngressScaleFramework) CleanupScaleTest() []error {
 	var errs []error
+	ctx := context.TODO()
 
 	f.Logger.Infof("Cleaning up ingresses...")
 	for _, ing := range f.ScaleTestIngs {
 		if ing != nil {
-			if err := f.Clientset.ExtensionsV1beta1().Ingresses(ing.Namespace).Delete(ing.Name, nil); err != nil {
+			if err := f.Clientset.ExtensionsV1beta1().Ingresses(ing.Namespace).Delete(ctx, ing.Name, nil); err != nil {
 				errs = append(errs, fmt.Errorf("Error while deleting ingress %s/%s: %v", ing.Namespace, ing.Name, err))
 			}
 		}
@@ -138,14 +140,14 @@ func (f *IngressScaleFramework) CleanupScaleTest() []error {
 	f.Logger.Infof("Cleaning up services...")
 	for _, svc := range f.ScaleTestSvcs {
 		if svc != nil {
-			if err := f.Clientset.CoreV1().Services(svc.Namespace).Delete(svc.Name, nil); err != nil {
+			if err := f.Clientset.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, nil); err != nil {
 				errs = append(errs, fmt.Errorf("Error while deleting service %s/%s: %v", svc.Namespace, svc.Name, err))
 			}
 		}
 	}
 	if f.ScaleTestDeploy != nil {
 		f.Logger.Infof("Cleaning up deployment %s...", f.ScaleTestDeploy.Name)
-		if err := f.Clientset.ExtensionsV1beta1().Deployments(f.ScaleTestDeploy.Namespace).Delete(f.ScaleTestDeploy.Name, nil); err != nil {
+		if err := f.Clientset.ExtensionsV1beta1().Deployments(f.ScaleTestDeploy.Namespace).Delete(ctx, f.ScaleTestDeploy.Name, nil); err != nil {
 			errs = append(errs, fmt.Errorf("Error while delting deployment %s/%s: %v", f.ScaleTestDeploy.Namespace, f.ScaleTestDeploy.Name, err))
 		}
 	}
@@ -161,10 +163,11 @@ func (f *IngressScaleFramework) CleanupScaleTest() []error {
 // RunScaleTest runs ingress scale testing.
 func (f *IngressScaleFramework) RunScaleTest() []error {
 	var errs []error
+	ctx := context.TODO()
 
 	testDeploy := generateScaleTestBackendDeploymentSpec(scaleTestNumBackends)
 	f.Logger.Infof("Creating deployment %s...", testDeploy.Name)
-	testDeploy, err := f.Jig.Client.ExtensionsV1beta1().Deployments(f.Namespace).Create(testDeploy)
+	testDeploy, err := f.Jig.Client.ExtensionsV1beta1().Deployments(f.Namespace).Create(ctx, testDeploy)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("Failed to create deployment %s: %v", testDeploy.Name, err))
 		return errs
@@ -267,14 +270,14 @@ func (f *IngressScaleFramework) RunScaleTest() []error {
 		f.StepCreateLatencies = append(f.StepCreateLatencies, elapsed)
 
 		f.Logger.Infof("Updating ingress and wait for change to take effect")
-		ingToUpdate, err := f.Clientset.ExtensionsV1beta1().Ingresses(f.Namespace).Get(ingCreated.Name, metav1.GetOptions{})
+		ingToUpdate, err := f.Clientset.ExtensionsV1beta1().Ingresses(f.Namespace).Get(ctx, ingCreated.Name, metav1.GetOptions{})
 		if err != nil {
 			errs = append(errs, err)
 			return
 		}
 		addTestPathToIngress(ingToUpdate)
 		start = time.Now()
-		ingToUpdate, err = f.Clientset.ExtensionsV1beta1().Ingresses(f.Namespace).Update(ingToUpdate)
+		ingToUpdate, err = f.Clientset.ExtensionsV1beta1().Ingresses(f.Namespace).Update(ctx, ingToUpdate)
 		if err != nil {
 			errs = append(errs, err)
 			return
@@ -364,11 +367,12 @@ func addTestPathToIngress(ing *extensions.Ingress) {
 }
 
 func (f *IngressScaleFramework) createScaleTestServiceIngress(suffix string, enableTLS bool) (*v1.Service, *extensions.Ingress, error) {
-	svcCreated, err := f.Clientset.CoreV1().Services(f.Namespace).Create(generateScaleTestServiceSpec(suffix))
+	ctx := context.TODO()
+	svcCreated, err := f.Clientset.CoreV1().Services(f.Namespace).Create(ctx, generateScaleTestServiceSpec(suffix))
 	if err != nil {
 		return nil, nil, err
 	}
-	ingCreated, err := f.Clientset.ExtensionsV1beta1().Ingresses(f.Namespace).Create(generateScaleTestIngressSpec(suffix, enableTLS))
+	ingCreated, err := f.Clientset.ExtensionsV1beta1().Ingresses(f.Namespace).Create(ctx, generateScaleTestIngressSpec(suffix, enableTLS))
 	if err != nil {
 		return nil, nil, err
 	}

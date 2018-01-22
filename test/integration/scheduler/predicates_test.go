@@ -17,6 +17,7 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -35,6 +36,7 @@ const pollInterval = 100 * time.Millisecond
 // TestInterPodAffinity verifies that scheduler's inter pod affinity and
 // anti-affinity predicate functions works correctly.
 func TestInterPodAffinity(t *testing.T) {
+	ctx := context.TODO()
 	context := initTest(t, "inter-pod-affinity")
 	defer cleanupTest(t, context)
 	// Add a few nodes.
@@ -819,7 +821,7 @@ func TestInterPodAffinity(t *testing.T) {
 			} else {
 				nsName = context.ns.Name
 			}
-			createdPod, err := cs.CoreV1().Pods(nsName).Create(pod)
+			createdPod, err := cs.CoreV1().Pods(nsName).Create(ctx, pod)
 			if err != nil {
 				t.Fatalf("Test Failed: error, %v, while creating pod during test: %v", err, test.test)
 			}
@@ -828,7 +830,7 @@ func TestInterPodAffinity(t *testing.T) {
 				t.Errorf("Test Failed: error, %v, while waiting for pod during test, %v", err, test)
 			}
 		}
-		testPod, err := cs.CoreV1().Pods(context.ns.Name).Create(test.pod)
+		testPod, err := cs.CoreV1().Pods(context.ns.Name).Create(ctx, test.pod)
 		if err != nil {
 			if !(test.errorType == "invalidPod" && errors.IsInvalid(err)) {
 				t.Fatalf("Test Failed: error, %v, while creating pod during test: %v", err, test.test)
@@ -844,7 +846,7 @@ func TestInterPodAffinity(t *testing.T) {
 			t.Errorf("Test Failed: %v, err %v, test.fits %v", test.test, err, test.fits)
 		}
 
-		err = cs.CoreV1().Pods(context.ns.Name).Delete(test.pod.Name, metav1.NewDeleteOptions(0))
+		err = cs.CoreV1().Pods(context.ns.Name).Delete(ctx, test.pod.Name, metav1.NewDeleteOptions(0))
 		if err != nil {
 			t.Errorf("Test Failed: error, %v, while deleting pod during test: %v", err, test.test)
 		}
@@ -859,7 +861,7 @@ func TestInterPodAffinity(t *testing.T) {
 			} else {
 				nsName = context.ns.Name
 			}
-			err = cs.CoreV1().Pods(nsName).Delete(pod.Name, metav1.NewDeleteOptions(0))
+			err = cs.CoreV1().Pods(nsName).Delete(ctx, pod.Name, metav1.NewDeleteOptions(0))
 			if err != nil {
 				t.Errorf("Test Failed: error, %v, while deleting pod during test: %v", err, test.test)
 			}
@@ -874,6 +876,7 @@ func TestInterPodAffinity(t *testing.T) {
 // TestNodePIDPressure verifies that scheduler's CheckNodePIDPressurePredicate predicate
 // functions works correctly.
 func TestNodePIDPressure(t *testing.T) {
+	ctx := context.TODO()
 	context := initTest(t, "node-pid-pressure")
 	defer cleanupTest(t, context)
 	// Add a node.
@@ -908,7 +911,7 @@ func TestNodePIDPressure(t *testing.T) {
 		},
 	}
 
-	testPod, err = cs.CoreV1().Pods(context.ns.Name).Create(testPod)
+	testPod, err = cs.CoreV1().Pods(context.ns.Name).Create(ctx, testPod)
 	if err != nil {
 		t.Fatalf("Test Failed: error: %v, while creating pod", err)
 	}

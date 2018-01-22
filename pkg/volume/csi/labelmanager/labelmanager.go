@@ -19,6 +19,7 @@ limitations under the License.
 package labelmanager // import "k8s.io/kubernetes/pkg/volume/csi/labelmanager"
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -96,7 +97,8 @@ func verifyAndAddNodeId(
 		// Retrieve the latest version of Node before attempting update, so that
 		// existing changes are not overwritten. RetryOnConflict uses
 		// exponential backoff to avoid exhausting the apiserver.
-		result, getErr := k8sNodesClient.Get(k8sNodeName, metav1.GetOptions{})
+		ctx := context.TODO()
+		result, getErr := k8sNodesClient.Get(ctx, k8sNodeName, metav1.GetOptions{})
 		if getErr != nil {
 			glog.Errorf("Failed to get latest version of Node: %v", getErr)
 			return getErr // do not wrap error
@@ -151,7 +153,7 @@ func verifyAndAddNodeId(
 			result.ObjectMeta.Annotations,
 			annotationKey,
 			string(jsonObj))
-		_, updateErr := k8sNodesClient.Update(result)
+		_, updateErr := k8sNodesClient.Update(ctx, result)
 		if updateErr == nil {
 			fmt.Printf(
 				"Updated node %q successfully for CSI driver %q and CSI node name %q",
@@ -177,7 +179,8 @@ func verifyAndDeleteNodeId(
 		// Retrieve the latest version of Node before attempting update, so that
 		// existing changes are not overwritten. RetryOnConflict uses
 		// exponential backoff to avoid exhausting the apiserver.
-		result, getErr := k8sNodesClient.Get(k8sNodeName, metav1.GetOptions{})
+		ctx := context.TODO()
+		result, getErr := k8sNodesClient.Get(ctx, k8sNodeName, metav1.GetOptions{})
 		if getErr != nil {
 			glog.Errorf("failed to get latest version of Node: %v", getErr)
 			return getErr // do not wrap error
@@ -235,7 +238,7 @@ func verifyAndDeleteNodeId(
 			result.ObjectMeta.Annotations,
 			annotationKey,
 			string(jsonObj))
-		_, updateErr := k8sNodesClient.Update(result)
+		_, updateErr := k8sNodesClient.Update(ctx, result)
 		if updateErr == nil {
 			fmt.Printf(
 				"Updated node %q annotation to remove CSI driver %q.",

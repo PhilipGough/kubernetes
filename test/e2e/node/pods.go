@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -40,6 +41,7 @@ import (
 
 var _ = SIGDescribe("Pods Extended", func() {
 	f := framework.NewDefaultFramework("pods")
+	ctx := context.TODO()
 
 	framework.KubeDescribe("Delete Grace Period", func() {
 		var podClient *framework.PodClient
@@ -72,14 +74,14 @@ var _ = SIGDescribe("Pods Extended", func() {
 			By("setting up watch")
 			selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 			options := metav1.ListOptions{LabelSelector: selector.String()}
-			pods, err := podClient.List(options)
+			pods, err := podClient.List(ctx, options)
 			Expect(err).NotTo(HaveOccurred(), "failed to query for pod")
 			Expect(len(pods.Items)).To(Equal(0))
 			options = metav1.ListOptions{
 				LabelSelector:   selector.String(),
 				ResourceVersion: pods.ListMeta.ResourceVersion,
 			}
-			w, err := podClient.Watch(options)
+			w, err := podClient.Watch(ctx, options)
 			Expect(err).NotTo(HaveOccurred(), "failed to set up watch")
 
 			By("submitting the pod to kubernetes")
@@ -88,7 +90,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 			By("verifying the pod is in kubernetes")
 			selector = labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 			options = metav1.ListOptions{LabelSelector: selector.String()}
-			pods, err = podClient.List(options)
+			pods, err = podClient.List(ctx, options)
 			Expect(err).NotTo(HaveOccurred(), "failed to query for pod")
 			Expect(len(pods.Items)).To(Equal(1))
 
@@ -106,7 +108,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 			// may be carried out immediately rather than gracefully.
 			framework.ExpectNoError(f.WaitForPodRunning(pod.Name))
 			// save the running pod
-			pod, err = podClient.Get(pod.Name, metav1.GetOptions{})
+			pod, err = podClient.Get(ctx, pod.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "failed to GET scheduled pod")
 
 			// start local proxy, so we can send graceful deletion over query string, rather than body parameter
@@ -187,7 +189,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 
 			selector = labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 			options = metav1.ListOptions{LabelSelector: selector.String()}
-			pods, err = podClient.List(options)
+			pods, err = podClient.List(ctx, options)
 			Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 			Expect(len(pods.Items)).To(Equal(0))
 
@@ -233,7 +235,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 			podClient.Create(pod)
 
 			By("verifying QOS class is set on the pod")
-			pod, err := podClient.Get(name, metav1.GetOptions{})
+			pod, err := podClient.Get(ctx, name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "failed to query for pod")
 			Expect(pod.Status.QOSClass == v1.PodQOSGuaranteed)
 		})

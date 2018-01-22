@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -284,14 +285,15 @@ func (eq *endpointQueries) added(e *v1.Endpoints) {
 
 // blocks until it has finished syncing.
 func startEndpointWatcher(f *framework.Framework, q *endpointQueries) {
+	ctx := context.TODO()
 	_, controller := cache.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				obj, err := f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).List(options)
+				obj, err := f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).List(ctx, options)
 				return runtime.Object(obj), err
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).Watch(options)
+				return f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).Watch(ctx, options)
 			},
 		},
 		&v1.Endpoints{},
@@ -336,7 +338,7 @@ func singleServiceLatency(f *framework.Framework, name string, q *endpointQuerie
 		},
 	}
 	startTime := time.Now()
-	gotSvc, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(svc)
+	gotSvc, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(context.TODO(), svc)
 	if err != nil {
 		return 0, err
 	}

@@ -18,6 +18,7 @@ package kubectl
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -123,9 +124,9 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 		},
 	}
 	result := ""
-
+	ctx := context.TODO()
 	// Get current events
-	events, err := r.c.CoreV1().Events(d.Namespace).List(metav1.ListOptions{})
+	events, err := r.c.CoreV1().Events(d.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return result, err
 	}
@@ -134,7 +135,7 @@ func (r *DeploymentRollbacker) Rollback(obj runtime.Object, updatedAnnotations m
 		return result, err
 	}
 	// Watch for the changes of events
-	watch, err := r.c.CoreV1().Events(d.Namespace).Watch(metav1.ListOptions{Watch: true, ResourceVersion: events.ResourceVersion})
+	watch, err := r.c.CoreV1().Events(d.Namespace).Watch(ctx, metav1.ListOptions{Watch: true, ResourceVersion: events.ResourceVersion})
 	if err != nil {
 		return result, err
 	}
@@ -288,7 +289,7 @@ func (r *DaemonSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations ma
 	}
 
 	// Restore revision
-	if _, err = r.c.ExtensionsV1beta1().DaemonSets(accessor.GetNamespace()).Patch(accessor.GetName(), types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
+	if _, err = r.c.ExtensionsV1beta1().DaemonSets(accessor.GetNamespace()).Patch(context.TODO(), accessor.GetName(), types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 
@@ -375,7 +376,7 @@ func (r *StatefulSetRollbacker) Rollback(obj runtime.Object, updatedAnnotations 
 	}
 
 	// Restore revision
-	if _, err = r.c.AppsV1().StatefulSets(sts.Namespace).Patch(sts.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
+	if _, err = r.c.AppsV1().StatefulSets(sts.Namespace).Patch(context.TODO(), sts.Name, types.StrategicMergePatchType, toHistory.Data.Raw); err != nil {
 		return "", fmt.Errorf("failed restoring revision %d: %v", toRevision, err)
 	}
 

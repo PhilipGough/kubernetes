@@ -17,6 +17,7 @@ limitations under the License.
 package podgc
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -61,6 +62,7 @@ func TestGCTerminated(t *testing.T) {
 		phase v1.PodPhase
 	}
 
+	ctx := context.TODO()
 	testCases := []struct {
 		pods            []nameToPhase
 		threshold       int
@@ -126,7 +128,7 @@ func TestGCTerminated(t *testing.T) {
 		creationTime := time.Unix(0, 0)
 		for _, pod := range test.pods {
 			creationTime = creationTime.Add(1 * time.Hour)
-			podInformer.Informer().GetStore().Add(&v1.Pod{
+			podInformer.Informer(ctx).GetStore().Add(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: pod.name, CreationTimestamp: metav1.Time{Time: creationTime}},
 				Status:     v1.PodStatus{Phase: pod.phase},
 				Spec:       v1.PodSpec{NodeName: "node"},
@@ -156,6 +158,7 @@ func TestGCOrphaned(t *testing.T) {
 		phase v1.PodPhase
 	}
 
+	ctx := context.TODO()
 	testCases := []struct {
 		pods            []nameToPhase
 		threshold       int
@@ -193,14 +196,14 @@ func TestGCOrphaned(t *testing.T) {
 		creationTime := time.Unix(0, 0)
 		for _, pod := range test.pods {
 			creationTime = creationTime.Add(1 * time.Hour)
-			podInformer.Informer().GetStore().Add(&v1.Pod{
+			podInformer.Informer(ctx).GetStore().Add(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: pod.name, CreationTimestamp: metav1.Time{Time: creationTime}},
 				Status:     v1.PodStatus{Phase: pod.phase},
 				Spec:       v1.PodSpec{NodeName: "node"},
 			})
 		}
 
-		pods, err := podInformer.Lister().List(labels.Everything())
+		pods, err := podInformer.Lister(ctx).List(labels.Everything())
 		if err != nil {
 			t.Errorf("Error while listing all Pods: %v", err)
 			return
@@ -230,6 +233,7 @@ func TestGCUnscheduledTerminating(t *testing.T) {
 		nodeName          string
 	}
 
+	ctx := context.TODO()
 	testCases := []struct {
 		name            string
 		pods            []nameToPhase
@@ -270,7 +274,7 @@ func TestGCUnscheduledTerminating(t *testing.T) {
 		creationTime := time.Unix(0, 0)
 		for _, pod := range test.pods {
 			creationTime = creationTime.Add(1 * time.Hour)
-			podInformer.Informer().GetStore().Add(&v1.Pod{
+			podInformer.Informer(ctx).GetStore().Add(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{Name: pod.name, CreationTimestamp: metav1.Time{Time: creationTime},
 					DeletionTimestamp: pod.deletionTimeStamp},
 				Status: v1.PodStatus{Phase: pod.phase},
@@ -278,7 +282,7 @@ func TestGCUnscheduledTerminating(t *testing.T) {
 			})
 		}
 
-		pods, err := podInformer.Lister().List(labels.Everything())
+		pods, err := podInformer.Lister(ctx).List(labels.Everything())
 		if err != nil {
 			t.Errorf("Error while listing all Pods: %v", err)
 			return

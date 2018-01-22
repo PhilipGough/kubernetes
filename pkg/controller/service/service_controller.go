@@ -120,6 +120,8 @@ func New(
 		}
 	}
 
+	ctx := context.TODO()
+
 	s := &ServiceController{
 		cloud:            cloud,
 		knownHosts:       []*v1.Node{},
@@ -128,12 +130,12 @@ func New(
 		cache:            &serviceCache{serviceMap: make(map[string]*cachedService)},
 		eventBroadcaster: broadcaster,
 		eventRecorder:    recorder,
-		nodeLister:       nodeInformer.Lister(),
-		nodeListerSynced: nodeInformer.Informer().HasSynced,
+		nodeLister:       nodeInformer.Lister(ctx),
+		nodeListerSynced: nodeInformer.Informer(ctx).HasSynced,
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(minRetryDelay, maxRetryDelay), "service"),
 	}
 
-	serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
+	serviceInformer.Informer(ctx).AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: s.enqueueService,
 			UpdateFunc: func(old, cur interface{}) {
@@ -147,8 +149,8 @@ func New(
 		},
 		serviceSyncPeriod,
 	)
-	s.serviceLister = serviceInformer.Lister()
-	s.serviceListerSynced = serviceInformer.Informer().HasSynced
+	s.serviceLister = serviceInformer.Lister(ctx)
+	s.serviceListerSynced = serviceInformer.Informer(ctx).HasSynced
 
 	if err := s.init(); err != nil {
 		return nil, err
@@ -280,16 +282,17 @@ func (s *ServiceController) createLoadBalancerIfNeeded(key string, service *v1.S
 	previousState := v1helper.LoadBalancerStatusDeepCopy(&service.Status.LoadBalancer)
 	var newState *v1.LoadBalancerStatus
 	var err error
+	ctx := context.TODO()
 
 	if !wantsLoadBalancer(service) {
-		_, exists, err := s.balancer.GetLoadBalancer(context.TODO(), s.clusterName, service)
+		_, exists, err := s.balancer.GetLoadBalancer(ctx, s.clusterName, service)
 		if err != nil {
 			return fmt.Errorf("error getting LB for service %s: %v", key, err)
 		}
 		if exists {
 			glog.Infof("Deleting existing load balancer for service %s that no longer needs a load balancer.", key)
 			s.eventRecorder.Event(service, v1.EventTypeNormal, "DeletingLoadBalancer", "Deleting load balancer")
-			if err := s.balancer.EnsureLoadBalancerDeleted(context.TODO(), s.clusterName, service); err != nil {
+			if err := s.balancer.EnsureLoadBalancerDeleted(ctx, s.clusterName, service); err != nil {
 				return err
 			}
 			s.eventRecorder.Event(service, v1.EventTypeNormal, "DeletedLoadBalancer", "Deleted load balancer")
@@ -332,7 +335,7 @@ func (s *ServiceController) createLoadBalancerIfNeeded(key string, service *v1.S
 func (s *ServiceController) persistUpdate(service *v1.Service) error {
 	var err error
 	for i := 0; i < clientRetryCount; i++ {
-		_, err = s.kubeClient.CoreV1().Services(service.Namespace).UpdateStatus(service)
+		_, err = s.kubeClient.CoreV1().Services(service.Namespace).UpdateStatus(context.TODO(), service)
 		if err == nil {
 			return nil
 		}

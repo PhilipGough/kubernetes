@@ -103,7 +103,7 @@ func NewCloudNodeController(
 
 	// Use shared informer to listen to add/update of nodes. Note that any nodes
 	// that exist before node controller starts will show up in the update method
-	cnc.nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	cnc.nodeInformer.Informer(context.TODO()).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    cnc.AddCloudNode,
 		UpdateFunc: cnc.UpdateCloudNode,
 	})
@@ -135,7 +135,7 @@ func (cnc *CloudNodeController) UpdateNodeStatus() {
 		return
 	}
 
-	nodes, err := cnc.kubeClient.CoreV1().Nodes().List(metav1.ListOptions{ResourceVersion: "0"})
+	nodes, err := cnc.kubeClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{ResourceVersion: "0"})
 	if err != nil {
 		glog.Errorf("Error monitoring node status: %v", err)
 		return
@@ -219,7 +219,8 @@ func (cnc *CloudNodeController) MonitorNode() {
 		return
 	}
 
-	nodes, err := cnc.kubeClient.CoreV1().Nodes().List(metav1.ListOptions{ResourceVersion: "0"})
+	ctx := context.TODO()
+	nodes, err := cnc.kubeClient.CoreV1().Nodes().List(ctx, metav1.ListOptions{ResourceVersion: "0"})
 	if err != nil {
 		glog.Errorf("Error monitoring node status: %v", err)
 		return
@@ -236,7 +237,7 @@ func (cnc *CloudNodeController) MonitorNode() {
 				break
 			}
 			name := node.Name
-			node, err = cnc.kubeClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
+			node, err = cnc.kubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				glog.Errorf("Failed while getting a Node to retry updating NodeStatus. Probably Node %s was deleted.", name)
 				break
@@ -254,7 +255,7 @@ func (cnc *CloudNodeController) MonitorNode() {
 				// we need to check this first to get taint working in similar in all cloudproviders
 				// current problem is that shutdown nodes are not working in similar way ie. all cloudproviders
 				// does not delete node from kubernetes cluster when instance it is shutdown see issue #46442
-				shutdown, err := nodectrlutil.ShutdownInCloudProvider(context.TODO(), cnc.cloud, node)
+				shutdown, err := nodectrlutil.ShutdownInCloudProvider(ctx, cnc.cloud, node)
 				if err != nil {
 					glog.Errorf("Error getting data for node %s from cloud: %v", node.Name, err)
 				}
@@ -296,7 +297,7 @@ func (cnc *CloudNodeController) MonitorNode() {
 
 				go func(nodeName string) {
 					defer utilruntime.HandleCrash()
-					if err := cnc.kubeClient.CoreV1().Nodes().Delete(nodeName, nil); err != nil {
+					if err := cnc.kubeClient.CoreV1().Nodes().Delete(ctx, nodeName, nil); err != nil {
 						glog.Errorf("unable to delete node %q: %v", nodeName, err)
 					}
 				}(node.Name)
@@ -337,13 +338,14 @@ func (cnc *CloudNodeController) AddCloudNode(obj interface{}) {
 	}
 
 	err := clientretry.RetryOnConflict(UpdateNodeSpecBackoff, func() error {
-		curNode, err := cnc.kubeClient.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
+		ctx := context.TODO()
+		curNode, err := cnc.kubeClient.CoreV1().Nodes().Get(ctx, node.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 
 		if curNode.Spec.ProviderID == "" {
-			providerID, err := cloudprovider.GetInstanceProviderID(context.TODO(), cnc.cloud, types.NodeName(curNode.Name))
+			providerID, err := cloudprovider.GetInstanceProviderID(ctx, cnc.cloud, types.NodeName(curNode.Name))
 			if err == nil {
 				curNode.Spec.ProviderID = providerID
 			} else {
@@ -404,7 +406,7 @@ func (cnc *CloudNodeController) AddCloudNode(obj interface{}) {
 
 		curNode.Spec.Taints = excludeTaintFromList(curNode.Spec.Taints, *cloudTaint)
 
-		_, err = cnc.kubeClient.CoreV1().Nodes().Update(curNode)
+		_, err = cnc.kubeClient.CoreV1().Nodes().Update(ctx, curNode)
 		if err != nil {
 			return err
 		}

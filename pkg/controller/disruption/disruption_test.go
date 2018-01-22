@@ -17,6 +17,7 @@ limitations under the License.
 package disruption
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"runtime/debug"
@@ -115,14 +116,16 @@ func newFakeDisruptionController() (*disruptionController, *pdbStates) {
 	dc.dListerSynced = alwaysReady
 	dc.ssListerSynced = alwaysReady
 
+	ctx := context.TODO()
+
 	return &disruptionController{
 		dc,
-		informerFactory.Core().V1().Pods().Informer().GetStore(),
-		informerFactory.Policy().V1beta1().PodDisruptionBudgets().Informer().GetStore(),
-		informerFactory.Core().V1().ReplicationControllers().Informer().GetStore(),
-		informerFactory.Extensions().V1beta1().ReplicaSets().Informer().GetStore(),
-		informerFactory.Extensions().V1beta1().Deployments().Informer().GetStore(),
-		informerFactory.Apps().V1beta1().StatefulSets().Informer().GetStore(),
+		informerFactory.Core().V1().Pods().Informer(ctx).GetStore(),
+		informerFactory.Policy().V1beta1().PodDisruptionBudgets().Informer(ctx).GetStore(),
+		informerFactory.Core().V1().ReplicationControllers().Informer(ctx).GetStore(),
+		informerFactory.Extensions().V1beta1().ReplicaSets().Informer(ctx).GetStore(),
+		informerFactory.Extensions().V1beta1().Deployments().Informer(ctx).GetStore(),
+		informerFactory.Apps().V1beta1().StatefulSets().Informer(ctx).GetStore(),
 	}, ps
 }
 

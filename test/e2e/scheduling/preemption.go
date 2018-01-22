@@ -17,6 +17,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -39,6 +40,7 @@ var _ = SIGDescribe("SchedulerPreemption [Serial] [Feature:PodPreemption]", func
 	var nodeList *v1.NodeList
 	var ns string
 	f := framework.NewDefaultFramework("sched-preemption")
+	ctx := context.TODO()
 
 	lowPriority, mediumPriority, highPriority := int32(1), int32(100), int32(1000)
 	lowPriorityClassName := f.BaseName + "-low-priority"
@@ -51,11 +53,11 @@ var _ = SIGDescribe("SchedulerPreemption [Serial] [Feature:PodPreemption]", func
 		cs = f.ClientSet
 		ns = f.Namespace.Name
 		nodeList = &v1.NodeList{}
-		_, err := f.ClientSet.SchedulingV1beta1().PriorityClasses().Create(&schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
+		_, err := f.ClientSet.SchedulingV1beta1().PriorityClasses().Create(ctx, &schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
 		Expect(err == nil || errors.IsAlreadyExists(err)).To(Equal(true))
-		_, err = f.ClientSet.SchedulingV1beta1().PriorityClasses().Create(&schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: mediumPriorityClassName}, Value: mediumPriority})
+		_, err = f.ClientSet.SchedulingV1beta1().PriorityClasses().Create(ctx, &schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: mediumPriorityClassName}, Value: mediumPriority})
 		Expect(err == nil || errors.IsAlreadyExists(err)).To(Equal(true))
-		_, err = f.ClientSet.SchedulingV1beta1().PriorityClasses().Create(&schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: lowPriorityClassName}, Value: lowPriority})
+		_, err = f.ClientSet.SchedulingV1beta1().PriorityClasses().Create(ctx, &schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: lowPriorityClassName}, Value: lowPriority})
 		Expect(err == nil || errors.IsAlreadyExists(err)).To(Equal(true))
 
 		framework.WaitForAllNodesHealthy(cs, time.Minute)
@@ -113,13 +115,13 @@ var _ = SIGDescribe("SchedulerPreemption [Serial] [Feature:PodPreemption]", func
 			},
 		})
 		// Make sure that the lowest priority pod is deleted.
-		preemptedPod, err := cs.CoreV1().Pods(pods[0].Namespace).Get(pods[0].Name, metav1.GetOptions{})
+		preemptedPod, err := cs.CoreV1().Pods(pods[0].Namespace).Get(ctx, pods[0].Name, metav1.GetOptions{})
 		podDeleted := (err != nil && errors.IsNotFound(err)) ||
 			(err == nil && preemptedPod.DeletionTimestamp != nil)
 		Expect(podDeleted).To(BeTrue())
 		// Other pods (mid priority ones) should be present.
 		for i := 1; i < len(pods); i++ {
-			livePod, err := cs.CoreV1().Pods(pods[i].Namespace).Get(pods[i].Name, metav1.GetOptions{})
+			livePod, err := cs.CoreV1().Pods(pods[i].Namespace).Get(ctx, pods[i].Name, metav1.GetOptions{})
 			framework.ExpectNoError(err)
 			Expect(livePod.DeletionTimestamp).To(BeNil())
 		}
@@ -174,13 +176,13 @@ var _ = SIGDescribe("SchedulerPreemption [Serial] [Feature:PodPreemption]", func
 			},
 		})
 		// Make sure that the lowest priority pod is deleted.
-		preemptedPod, err := cs.CoreV1().Pods(pods[0].Namespace).Get(pods[0].Name, metav1.GetOptions{})
+		preemptedPod, err := cs.CoreV1().Pods(pods[0].Namespace).Get(ctx, pods[0].Name, metav1.GetOptions{})
 		podDeleted := (err != nil && errors.IsNotFound(err)) ||
 			(err == nil && preemptedPod.DeletionTimestamp != nil)
 		Expect(podDeleted).To(BeTrue())
 		// Other pods (mid priority ones) should be present.
 		for i := 1; i < len(pods); i++ {
-			livePod, err := cs.CoreV1().Pods(pods[i].Namespace).Get(pods[i].Name, metav1.GetOptions{})
+			livePod, err := cs.CoreV1().Pods(pods[i].Namespace).Get(ctx, pods[i].Name, metav1.GetOptions{})
 			framework.ExpectNoError(err)
 			Expect(livePod.DeletionTimestamp).To(BeNil())
 		}
@@ -302,13 +304,13 @@ var _ = SIGDescribe("SchedulerPreemption [Serial] [Feature:PodPreemption]", func
 			},
 		})
 		// Make sure that the medium priority pod on the first node is preempted.
-		preemptedPod, err := cs.CoreV1().Pods(pods[0].Namespace).Get(pods[0].Name, metav1.GetOptions{})
+		preemptedPod, err := cs.CoreV1().Pods(pods[0].Namespace).Get(ctx, pods[0].Name, metav1.GetOptions{})
 		podDeleted := (err != nil && errors.IsNotFound(err)) ||
 			(err == nil && preemptedPod.DeletionTimestamp != nil)
 		Expect(podDeleted).To(BeTrue())
 		// Other pods (low priority ones) should be present.
 		for i := 1; i < len(pods); i++ {
-			livePod, err := cs.CoreV1().Pods(pods[i].Namespace).Get(pods[i].Name, metav1.GetOptions{})
+			livePod, err := cs.CoreV1().Pods(pods[i].Namespace).Get(ctx, pods[i].Name, metav1.GetOptions{})
 			framework.ExpectNoError(err)
 			Expect(livePod.DeletionTimestamp).To(BeNil())
 		}

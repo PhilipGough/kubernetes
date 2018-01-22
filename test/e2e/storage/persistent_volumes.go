@@ -17,6 +17,7 @@ limitations under the License.
 package storage
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -60,7 +61,7 @@ func completeMultiTest(f *framework.Framework, c clientset.Interface, ns string,
 	// 1. verify each PV permits write access to a client pod
 	By("Checking pod has write access to PersistentVolumes")
 	for pvcKey := range claims {
-		pvc, err := c.CoreV1().PersistentVolumeClaims(pvcKey.Namespace).Get(pvcKey.Name, metav1.GetOptions{})
+		pvc, err := c.CoreV1().PersistentVolumeClaims(pvcKey.Namespace).Get(context.TODO(), pvcKey.Name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("error getting pvc %q: %v", pvcKey.Name, err)
 		}
@@ -256,6 +257,7 @@ var _ = utils.SIGDescribe("PersistentVolumes", func() {
 		// Recycler, this entire context can be removed without affecting the test suite or leaving behind
 		// dead code.
 		Context("when invoking the Recycle reclaim policy", func() {
+			ctx := context.TODO()
 			BeforeEach(func() {
 				pvConfig.ReclaimPolicy = v1.PersistentVolumeReclaimRecycle
 				pv, pvc, err = framework.CreatePVPVC(c, pvConfig, pvcConfig, ns, false)
@@ -276,7 +278,7 @@ var _ = utils.SIGDescribe("PersistentVolumes", func() {
 			It("should test that a PV becomes Available and is clean after the PVC is deleted.", func() {
 				By("Writing to the volume.")
 				pod := framework.MakeWritePod(ns, pvc)
-				pod, err = c.CoreV1().Pods(ns).Create(pod)
+				pod, err = c.CoreV1().Pods(ns).Create(ctx, pod)
 				Expect(err).NotTo(HaveOccurred())
 				framework.ExpectNoError(framework.WaitForPodSuccessInNamespace(c, pod.Name, ns))
 
@@ -293,7 +295,7 @@ var _ = utils.SIGDescribe("PersistentVolumes", func() {
 				By("Verifying the mount has been cleaned.")
 				mount := pod.Spec.Containers[0].VolumeMounts[0].MountPath
 				pod = framework.MakePod(ns, nil, []*v1.PersistentVolumeClaim{pvc}, true, fmt.Sprintf("[ $(ls -A %s | wc -l) -eq 0 ] && exit 0 || exit 1", mount))
-				pod, err = c.CoreV1().Pods(ns).Create(pod)
+				pod, err = c.CoreV1().Pods(ns).Create(ctx, pod)
 				Expect(err).NotTo(HaveOccurred())
 				framework.ExpectNoError(framework.WaitForPodSuccessInNamespace(c, pod.Name, ns))
 				framework.Logf("Pod exited without failure; the volume has been recycled.")

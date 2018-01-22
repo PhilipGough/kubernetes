@@ -28,6 +28,7 @@ limitations under the License.
 package storage
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"path"
@@ -186,6 +187,7 @@ func deleteFile(pod *v1.Pod, fpath string) {
 // Note: `fsizes` values are enforced to each be at least `minFileSize` and a multiple of `minFileSize`
 //   bytes.
 func testVolumeIO(f *framework.Framework, cs clientset.Interface, config framework.VolumeTestConfig, volsrc v1.VolumeSource, podSecContext *v1.PodSecurityContext, file string, fsizes []int64) (err error) {
+	ctx := context.TODO()
 	dir := path.Join("/opt", config.Prefix, config.Namespace)
 	dd_input := path.Join(dir, "dd_if")
 	writeBlk := strings.Repeat("abcdefghijklmnopqrstuvwxyz123456", 32) // 1KiB value
@@ -199,7 +201,7 @@ func testVolumeIO(f *framework.Framework, cs clientset.Interface, config framewo
 
 	By(fmt.Sprintf("starting %s", clientPod.Name))
 	podsNamespacer := cs.CoreV1().Pods(config.Namespace)
-	clientPod, err = podsNamespacer.Create(clientPod)
+	clientPod, err = podsNamespacer.Create(ctx, clientPod)
 	if err != nil {
 		return fmt.Errorf("failed to create client pod %q: %v", clientPod.Name, err)
 	}
@@ -245,6 +247,7 @@ func testVolumeIO(f *framework.Framework, cs clientset.Interface, config framewo
 // These tests need privileged containers which are disabled by default.
 // TODO: support all of the plugins tested in storage/volumes.go
 var _ = utils.SIGDescribe("Volume plugin streaming [Slow]", func() {
+	ctx := context.TODO()
 	f := framework.NewDefaultFramework("volume-io")
 	var (
 		config    framework.VolumeTestConfig
@@ -320,7 +323,7 @@ var _ = utils.SIGDescribe("Volume plugin streaming [Slow]", func() {
 
 		AfterEach(func() {
 			framework.Logf("AfterEach: deleting Gluster endpoints %q...", name)
-			epErr := cs.CoreV1().Endpoints(ns).Delete(name, nil)
+			epErr := cs.CoreV1().Endpoints(ns).Delete(ctx, name, nil)
 			framework.Logf("AfterEach: deleting Gluster server pod %q...", serverPod.Name)
 			err := framework.DeletePodWithWait(f, cs, serverPod)
 			if epErr != nil || err != nil {
@@ -407,7 +410,7 @@ var _ = utils.SIGDescribe("Volume plugin streaming [Slow]", func() {
 
 		AfterEach(func() {
 			framework.Logf("AfterEach: deleting Ceph-RDB server secret %q...", secret.Name)
-			secErr := cs.CoreV1().Secrets(ns).Delete(secret.Name, &metav1.DeleteOptions{})
+			secErr := cs.CoreV1().Secrets(ns).Delete(ctx, secret.Name, &metav1.DeleteOptions{})
 			framework.Logf("AfterEach: deleting Ceph-RDB server pod %q...", serverPod.Name)
 			err := framework.DeletePodWithWait(f, cs, serverPod)
 			if secErr != nil || err != nil {

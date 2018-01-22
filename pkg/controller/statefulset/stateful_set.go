@@ -17,6 +17,7 @@ limitations under the License.
 package statefulset
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -89,28 +90,29 @@ func NewStatefulSetController(
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "statefulset-controller"})
+	ctx := context.TODO()
 
 	ssc := &StatefulSetController{
 		kubeClient: kubeClient,
 		control: NewDefaultStatefulSetControl(
 			NewRealStatefulPodControl(
 				kubeClient,
-				setInformer.Lister(),
-				podInformer.Lister(),
-				pvcInformer.Lister(),
+				setInformer.Lister(ctx),
+				podInformer.Lister(ctx),
+				pvcInformer.Lister(ctx),
 				recorder),
-			NewRealStatefulSetStatusUpdater(kubeClient, setInformer.Lister()),
-			history.NewHistory(kubeClient, revInformer.Lister()),
+			NewRealStatefulSetStatusUpdater(kubeClient, setInformer.Lister(ctx)),
+			history.NewHistory(kubeClient, revInformer.Lister(ctx)),
 			recorder,
 		),
-		pvcListerSynced: pvcInformer.Informer().HasSynced,
+		pvcListerSynced: pvcInformer.Informer(ctx).HasSynced,
 		queue:           workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "statefulset"),
 		podControl:      controller.RealPodControl{KubeClient: kubeClient, Recorder: recorder},
 
-		revListerSynced: revInformer.Informer().HasSynced,
+		revListerSynced: revInformer.Informer(ctx).HasSynced,
 	}
 
-	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	podInformer.Informer(ctx).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		// lookup the statefulset and enqueue
 		AddFunc: ssc.addPod,
 		// lookup current and old statefulset if labels changed
@@ -118,10 +120,10 @@ func NewStatefulSetController(
 		// lookup statefulset accounting for deletion tombstones
 		DeleteFunc: ssc.deletePod,
 	})
-	ssc.podLister = podInformer.Lister()
-	ssc.podListerSynced = podInformer.Informer().HasSynced
+	ssc.podLister = podInformer.Lister(ctx)
+	ssc.podListerSynced = podInformer.Informer(ctx).HasSynced
 
-	setInformer.Informer().AddEventHandlerWithResyncPeriod(
+	setInformer.Informer(ctx).AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: ssc.enqueueStatefulSet,
 			UpdateFunc: func(old, cur interface{}) {
@@ -136,8 +138,8 @@ func NewStatefulSetController(
 		},
 		statefulSetResyncPeriod,
 	)
-	ssc.setLister = setInformer.Lister()
-	ssc.setListerSynced = setInformer.Informer().HasSynced
+	ssc.setLister = setInformer.Lister(ctx)
+	ssc.setListerSynced = setInformer.Informer(ctx).HasSynced
 
 	// TODO: Watch volumes
 	return ssc
@@ -298,7 +300,7 @@ func (ssc *StatefulSetController) getPodsForStatefulSet(set *apps.StatefulSet, s
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing Pods (see #42639).
 	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
-		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(set.Name, metav1.GetOptions{})
+		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(context.TODO(), set.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +328,7 @@ func (ssc *StatefulSetController) adoptOrphanRevisions(set *apps.StatefulSet) er
 		}
 	}
 	if hasOrphans {
-		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(set.Name, metav1.GetOptions{})
+		fresh, err := ssc.kubeClient.AppsV1().StatefulSets(set.Namespace).Get(context.TODO(), set.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}

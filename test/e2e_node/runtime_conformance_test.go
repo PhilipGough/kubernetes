@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_node
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -43,6 +44,7 @@ const (
 
 var _ = framework.KubeDescribe("Container Runtime Conformance Test", func() {
 	f := framework.NewDefaultFramework("runtime-conformance")
+	ctx := context.TODO()
 
 	Describe("container runtime conformance blackbox test", func() {
 		Context("when starting a container that exits", func() {
@@ -330,9 +332,9 @@ while true; do sleep 1; done
 					if testCase.secret {
 						secret.Name = "image-pull-secret-" + string(uuid.NewUUID())
 						By("create image pull secret")
-						_, err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret)
+						_, err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, secret)
 						Expect(err).NotTo(HaveOccurred())
-						defer f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(secret.Name, nil)
+						defer f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(ctx, secret.Name, nil)
 						container.ImagePullSecrets = []string{secret.Name}
 					}
 					if testCase.credentialProvider {

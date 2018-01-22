@@ -17,6 +17,7 @@ limitations under the License.
 package establish
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -48,10 +49,11 @@ type EstablishingController struct {
 // NewEstablishingController creates new EstablishingController.
 func NewEstablishingController(crdInformer informers.CustomResourceDefinitionInformer,
 	crdClient client.CustomResourceDefinitionsGetter) *EstablishingController {
+	ctx := context.TODO()
 	ec := &EstablishingController{
 		crdClient: crdClient,
-		crdLister: crdInformer.Lister(),
-		crdSynced: crdInformer.Informer().HasSynced,
+		crdLister: crdInformer.Lister(ctx),
+		crdSynced: crdInformer.Informer(ctx).HasSynced,
 		queue:     workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "crdEstablishing"),
 	}
 
@@ -133,7 +135,7 @@ func (ec *EstablishingController) sync(key string) error {
 	apiextensions.SetCRDCondition(crd, establishedCondition)
 
 	// Update server with new CRD condition.
-	_, err = ec.crdClient.CustomResourceDefinitions().UpdateStatus(crd)
+	_, err = ec.crdClient.CustomResourceDefinitions().UpdateStatus(context.TODO(), crd)
 	if err != nil {
 		return err
 	}

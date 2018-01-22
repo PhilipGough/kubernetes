@@ -17,6 +17,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -41,6 +42,8 @@ var _ = framework.KubeDescribe("EquivalenceCache [Serial]", func() {
 	var masterNodes sets.String
 	var systemPodsNo int
 	var ns string
+
+	ctx := context.TODO()
 	f := framework.NewDefaultFramework("equivalence-cache")
 	ignoreLabels := framework.ImagePullerLabels
 
@@ -146,7 +149,7 @@ var _ = framework.KubeDescribe("EquivalenceCache [Serial]", func() {
 		// RC should be running successfully
 		// TODO: WaitForSchedulerAfterAction() can on be used to wait for failure event,
 		// not for successful RC, since no specific pod name can be provided.
-		_, err := cs.CoreV1().ReplicationControllers(ns).Create(rc)
+		_, err := cs.CoreV1().ReplicationControllers(ns).Create(ctx, rc)
 		framework.ExpectNoError(err)
 		framework.ExpectNoError(framework.WaitForControlledPodsRunning(cs, ns, affinityRCName, api.Kind("ReplicationController")))
 
@@ -168,7 +171,7 @@ var _ = framework.KubeDescribe("EquivalenceCache [Serial]", func() {
 		By("Launching two pods on two distinct nodes to get two node names")
 		CreateHostPortPods(f, "host-port", 2, true)
 		defer framework.DeleteRCAndWaitForGC(f.ClientSet, ns, "host-port")
-		podList, err := cs.CoreV1().Pods(ns).List(metav1.ListOptions{})
+		podList, err := cs.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 		framework.ExpectNoError(err)
 		Expect(len(podList.Items)).To(Equal(2))
 		nodeNames := []string{podList.Items[0].Spec.NodeName, podList.Items[1].Spec.NodeName}
@@ -221,7 +224,7 @@ var _ = framework.KubeDescribe("EquivalenceCache [Serial]", func() {
 		defer framework.DeleteRCAndWaitForGC(f.ClientSet, ns, labelRCName)
 
 		WaitForSchedulerAfterAction(f, func() error {
-			_, err := cs.CoreV1().ReplicationControllers(ns).Create(rc)
+			_, err := cs.CoreV1().ReplicationControllers(ns).Create(ctx, rc)
 			return err
 		}, ns, labelRCName, false)
 

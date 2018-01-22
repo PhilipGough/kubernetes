@@ -18,6 +18,7 @@ package master
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -103,7 +104,7 @@ func TestKubernetesService(t *testing.T) {
 	_, _, closeFn := framework.RunAMaster(config)
 	defer closeFn()
 	coreClient := clientset.NewForConfigOrDie(config.GenericConfig.LoopbackClientConfig)
-	if _, err := coreClient.Core().Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{}); err != nil {
+	if _, err := coreClient.Core().Services(metav1.NamespaceDefault).Get(context.TODO(), "kubernetes", metav1.GetOptions{}); err != nil {
 		t.Fatalf("Expected kubernetes service to exists, got: %v", err)
 	}
 }
@@ -295,6 +296,7 @@ func constructBody(val string, size int, field string, t *testing.T) *appsv1.Dep
 }
 
 func TestObjectSizeResponses(t *testing.T) {
+	ctx := context.TODO()
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
@@ -329,7 +331,7 @@ func TestObjectSizeResponses(t *testing.T) {
 
 	for _, r := range requests {
 		t.Run(r.size, func(t *testing.T) {
-			_, err := client.AppsV1().Deployments(metav1.NamespaceDefault).Create(r.deploymentObject)
+			_, err := client.AppsV1().Deployments(metav1.NamespaceDefault).Create(ctx, r.deploymentObject)
 			if err != nil {
 				if !strings.Contains(err.Error(), r.expectedMessage) {
 					t.Errorf("got: %s;want: %s", err.Error(), r.expectedMessage)
@@ -621,13 +623,14 @@ func countEndpoints(eps *api.Endpoints) int {
 }
 
 func TestMasterService(t *testing.T) {
+	ctx := context.TODO()
 	_, s, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 
 	client := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Groups[api.GroupName].GroupVersion()}})
 
 	err := wait.Poll(time.Second, time.Minute, func() (bool, error) {
-		svcList, err := client.Core().Services(metav1.NamespaceDefault).List(metav1.ListOptions{})
+		svcList, err := client.Core().Services(metav1.NamespaceDefault).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 			return false, nil
@@ -640,7 +643,7 @@ func TestMasterService(t *testing.T) {
 			}
 		}
 		if found {
-			ep, err := client.Core().Endpoints(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{})
+			ep, err := client.Core().Endpoints(metav1.NamespaceDefault).Get(ctx, "kubernetes", metav1.GetOptions{})
 			if err != nil {
 				return false, nil
 			}
@@ -657,6 +660,7 @@ func TestMasterService(t *testing.T) {
 }
 
 func TestServiceAlloc(t *testing.T) {
+	ctx := context.TODO()
 	cfg := framework.NewIntegrationTestMasterConfig()
 	_, cidr, err := net.ParseCIDR("192.168.0.0/29")
 	if err != nil {
@@ -684,7 +688,7 @@ func TestServiceAlloc(t *testing.T) {
 
 	// Wait until the default "kubernetes" service is created.
 	if err = wait.Poll(250*time.Millisecond, time.Minute, func() (bool, error) {
-		_, err := client.Core().Services(metav1.NamespaceDefault).Get("kubernetes", metav1.GetOptions{})
+		_, err := client.Core().Services(metav1.NamespaceDefault).Get(ctx, "kubernetes", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -695,18 +699,18 @@ func TestServiceAlloc(t *testing.T) {
 
 	// make 5 more services to take up all IPs
 	for i := 0; i < 5; i++ {
-		if _, err := client.Core().Services(metav1.NamespaceDefault).Create(svc(i)); err != nil {
+		if _, err := client.Core().Services(metav1.NamespaceDefault).Create(ctx, svc(i)); err != nil {
 			t.Error(err)
 		}
 	}
 
 	// Make another service. It will fail because we're out of cluster IPs
-	if _, err := client.Core().Services(metav1.NamespaceDefault).Create(svc(8)); err != nil {
+	if _, err := client.Core().Services(metav1.NamespaceDefault).Create(ctx, svc(8)); err != nil {
 		if !strings.Contains(err.Error(), "range is full") {
 			t.Errorf("unexpected error text: %v", err)
 		}
 	} else {
-		svcs, err := client.Core().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		svcs, err := client.Core().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.Fatalf("unexpected success, and error getting the services: %v", err)
 		}
@@ -718,12 +722,12 @@ func TestServiceAlloc(t *testing.T) {
 	}
 
 	// Delete the first service.
-	if err := client.Core().Services(metav1.NamespaceDefault).Delete(svc(1).ObjectMeta.Name, nil); err != nil {
+	if err := client.Core().Services(metav1.NamespaceDefault).Delete(ctx, svc(1).ObjectMeta.Name, nil); err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
 
 	// This time creating the second service should work.
-	if _, err := client.Core().Services(metav1.NamespaceDefault).Create(svc(8)); err != nil {
+	if _, err := client.Core().Services(metav1.NamespaceDefault).Create(ctx, svc(8)); err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
 }
@@ -733,6 +737,7 @@ func TestServiceAlloc(t *testing.T) {
 // in very large clusters. It is disabled by default - start a kube-apiserver and pass
 // UPDATE_NODE_APISERVER as the host value.
 func TestUpdateNodeObjects(t *testing.T) {
+	ctx := context.TODO()
 	server := os.Getenv("UPDATE_NODE_APISERVER")
 	if len(server) == 0 {
 		t.Skip("UPDATE_NODE_APISERVER is not set")
@@ -752,8 +757,8 @@ func TestUpdateNodeObjects(t *testing.T) {
 	iterations := 10000
 
 	for i := 0; i < nodes*6; i++ {
-		c.Nodes().Delete(fmt.Sprintf("node-%d", i), nil)
-		_, err := c.Nodes().Create(&v1.Node{
+		c.Nodes().Delete(ctx, fmt.Sprintf("node-%d", i), nil)
+		_, err := c.Nodes().Create(ctx, &v1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("node-%d", i),
 			},
@@ -766,7 +771,7 @@ func TestUpdateNodeObjects(t *testing.T) {
 	for k := 0; k < listers; k++ {
 		go func(lister int) {
 			for i := 0; i < iterations; i++ {
-				_, err := c.Nodes().List(metav1.ListOptions{})
+				_, err := c.Nodes().List(ctx, metav1.ListOptions{})
 				if err != nil {
 					fmt.Printf("[list:%d] error after %d: %v\n", lister, i, err)
 					break
@@ -778,7 +783,7 @@ func TestUpdateNodeObjects(t *testing.T) {
 
 	for k := 0; k < watchers; k++ {
 		go func(lister int) {
-			w, err := c.Nodes().Watch(metav1.ListOptions{})
+			w, err := c.Nodes().Watch(ctx, metav1.ListOptions{})
 			if err != nil {
 				fmt.Printf("[watch:%d] error: %v", lister, err)
 				return
@@ -808,14 +813,14 @@ func TestUpdateNodeObjects(t *testing.T) {
 					fmt.Printf("[%d] iteration %d ...\n", node, i)
 				}
 				if i%20 == 0 {
-					_, err := c.Nodes().List(metav1.ListOptions{})
+					_, err := c.Nodes().List(ctx, metav1.ListOptions{})
 					if err != nil {
 						fmt.Printf("[%d] error after %d: %v\n", node, i, err)
 						break
 					}
 				}
 
-				r, err := c.Nodes().List(metav1.ListOptions{
+				r, err := c.Nodes().List(ctx, metav1.ListOptions{
 					FieldSelector:   fmt.Sprintf("metadata.name=node-%d", node),
 					ResourceVersion: "0",
 				})
@@ -828,7 +833,7 @@ func TestUpdateNodeObjects(t *testing.T) {
 					break
 				}
 
-				n, err := c.Nodes().Get(fmt.Sprintf("node-%d", node), metav1.GetOptions{})
+				n, err := c.Nodes().Get(ctx, fmt.Sprintf("node-%d", node), metav1.GetOptions{})
 				if err != nil {
 					fmt.Printf("[%d] error after %d: %v\n", node, i, err)
 					break
@@ -866,7 +871,7 @@ func TestUpdateNodeObjects(t *testing.T) {
 					lastCount = 0
 					n.Status.Conditions = nil
 				}
-				if _, err := c.Nodes().UpdateStatus(n); err != nil {
+				if _, err := c.Nodes().UpdateStatus(ctx, n); err != nil {
 					if !errors.IsConflict(err) {
 						fmt.Printf("[%d] error after %d: %v\n", node, i, err)
 						break

@@ -17,6 +17,7 @@ limitations under the License.
 package ipam
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -97,18 +98,19 @@ func NewCloudCIDRAllocator(client clientset.Interface, cloud cloudprovider.Inter
 		err := fmt.Errorf("cloudCIDRAllocator does not support %v provider", cloud.ProviderName())
 		return nil, err
 	}
+	ctx := context.TODO()
 
 	ca := &cloudCIDRAllocator{
 		client:            client,
 		cloud:             gceCloud,
-		nodeLister:        nodeInformer.Lister(),
-		nodesSynced:       nodeInformer.Informer().HasSynced,
+		nodeLister:        nodeInformer.Lister(ctx),
+		nodesSynced:       nodeInformer.Informer(ctx).HasSynced,
 		nodeUpdateChannel: make(chan string, cidrUpdateQueueSize),
 		recorder:          recorder,
 		nodesInProcessing: map[string]*nodeProcessingInfo{},
 	}
 
-	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	nodeInformer.Informer(ctx).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: nodeutil.CreateAddNodeHandler(ca.AllocateOrOccupyCIDR),
 		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node) error {
 			if newNode.Spec.PodCIDR == "" {

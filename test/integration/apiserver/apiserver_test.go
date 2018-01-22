@@ -123,6 +123,7 @@ var cascDel = `
 
 // Tests that the apiserver returns 202 status code as expected.
 func Test202StatusCode(t *testing.T) {
+	ctx := context.TODO()
 	s, clientSet, closeFn := setup(t)
 	defer closeFn()
 
@@ -133,7 +134,7 @@ func Test202StatusCode(t *testing.T) {
 
 	// 1. Create the resource without any finalizer and then delete it without setting DeleteOptions.
 	// Verify that server returns 200 in this case.
-	rs, err := rsClient.Create(newRS(ns.Name))
+	rs, err := rsClient.Create(ctx, newRS(ns.Name))
 	if err != nil {
 		t.Fatalf("Failed to create rs: %v", err)
 	}
@@ -143,7 +144,7 @@ func Test202StatusCode(t *testing.T) {
 	// Verify that the apiserver still returns 200 since DeleteOptions.OrphanDependents is not set.
 	rs = newRS(ns.Name)
 	rs.ObjectMeta.Finalizers = []string{"kube.io/dummy-finalizer"}
-	rs, err = rsClient.Create(rs)
+	rs, err = rsClient.Create(ctx, rs)
 	if err != nil {
 		t.Fatalf("Failed to create rs: %v", err)
 	}
@@ -152,7 +153,7 @@ func Test202StatusCode(t *testing.T) {
 	// 3. Create the resource and then delete it with DeleteOptions.OrphanDependents=false.
 	// Verify that the server still returns 200 since the resource is immediately deleted.
 	rs = newRS(ns.Name)
-	rs, err = rsClient.Create(rs)
+	rs, err = rsClient.Create(ctx, rs)
 	if err != nil {
 		t.Fatalf("Failed to create rs: %v", err)
 	}
@@ -162,7 +163,7 @@ func Test202StatusCode(t *testing.T) {
 	// Verify that the server returns 202 in this case.
 	rs = newRS(ns.Name)
 	rs.ObjectMeta.Finalizers = []string{"kube.io/dummy-finalizer"}
-	rs, err = rsClient.Create(rs)
+	rs, err = rsClient.Create(ctx, rs)
 	if err != nil {
 		t.Fatalf("Failed to create rs: %v", err)
 	}
@@ -170,6 +171,7 @@ func Test202StatusCode(t *testing.T) {
 }
 
 func TestAPIListChunking(t *testing.T) {
+	ctx := context.TODO()
 	if err := utilfeature.DefaultFeatureGate.Set(string(genericfeatures.APIListChunking) + "=true"); err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +186,7 @@ func TestAPIListChunking(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		rs := newRS(ns.Name)
 		rs.Name = fmt.Sprintf("test-%d", i)
-		if _, err := rsClient.Create(rs); err != nil {
+		if _, err := rsClient.Create(ctx, rs); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -195,7 +197,7 @@ func TestAPIListChunking(t *testing.T) {
 		PageSize: 1,
 		PageFn: pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
 			calls++
-			list, err := rsClient.List(opts)
+			list, err := rsClient.List(ctx, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -205,7 +207,7 @@ func TestAPIListChunking(t *testing.T) {
 			if calls == 2 {
 				rs := newRS(ns.Name)
 				rs.Name = "test-5"
-				if _, err := rsClient.Create(rs); err != nil {
+				if _, err := rsClient.Create(ctx, rs); err != nil {
 					t.Fatal(err)
 				}
 			}

@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -51,6 +52,7 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 		cloudConfig      framework.CloudConfig
 	)
 	f := framework.NewDefaultFramework("ingress")
+	ctx := context.TODO()
 
 	BeforeEach(func() {
 		jig = framework.NewIngressTestJig(f.ClientSet)
@@ -166,9 +168,9 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 					},
 				},
 			}
-			_, err := jig.Client.ExtensionsV1beta1().Ingresses(ns).Create(ingFailTLSBackend)
+			_, err := jig.Client.ExtensionsV1beta1().Ingresses(ns).Create(ctx, ingFailTLSBackend)
 			defer func() {
-				if err := jig.Client.ExtensionsV1beta1().Ingresses(ns).Delete(ingFailTLSBackend.Name, nil); err != nil {
+				if err := jig.Client.ExtensionsV1beta1().Ingresses(ns).Delete(ctx, ingFailTLSBackend.Name, nil); err != nil {
 					framework.Logf("Failed to delete ingress %s: %v", ingFailTLSBackend.Name, err)
 				}
 			}()
@@ -202,9 +204,9 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 					},
 				},
 			}
-			_, err = jig.Client.ExtensionsV1beta1().Ingresses(ns).Create(ingFailRules)
+			_, err = jig.Client.ExtensionsV1beta1().Ingresses(ns).Create(ctx, ingFailRules)
 			defer func() {
-				if err := jig.Client.ExtensionsV1beta1().Ingresses(ns).Delete(ingFailRules.Name, nil); err != nil {
+				if err := jig.Client.ExtensionsV1beta1().Ingresses(ns).Delete(ctx, ingFailRules.Name, nil); err != nil {
 					framework.Logf("Failed to delete ingress %s: %v", ingFailRules.Name, err)
 				}
 			}()
@@ -356,7 +358,7 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 
 			By(fmt.Sprintf("waiting for Ingress %s to get instance group annotation", name))
 			pollErr := wait.Poll(2*time.Second, framework.LoadBalancerPollTimeout, func() (bool, error) {
-				ing, err := f.ClientSet.ExtensionsV1beta1().Ingresses(ns).Get(name, metav1.GetOptions{})
+				ing, err := f.ClientSet.ExtensionsV1beta1().Ingresses(ns).Get(ctx, name, metav1.GetOptions{})
 				framework.ExpectNoError(err)
 				annotations := ing.Annotations
 				if annotations == nil || annotations[framework.InstanceGroupAnnotation] == "" {
@@ -379,7 +381,7 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 			scKey := framework.StatusPrefix + "/ssl-cert"
 			beKey := framework.StatusPrefix + "/backends"
 			wait.Poll(2*time.Second, time.Minute, func() (bool, error) {
-				ing, err := f.ClientSet.ExtensionsV1beta1().Ingresses(ns).Get(name, metav1.GetOptions{})
+				ing, err := f.ClientSet.ExtensionsV1beta1().Ingresses(ns).Get(ctx, name, metav1.GetOptions{})
 				framework.ExpectNoError(err)
 				annotations := ing.Annotations
 				if annotations != nil && (annotations[umKey] != "" || annotations[fwKey] != "" ||
@@ -432,21 +434,21 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 			detectHttpVersionAndSchemeTest(f, jig, address, "request_version=2", httpsScheme)
 
 			By("Switch backend service to use HTTPS")
-			svcList, err := f.ClientSet.CoreV1().Services(ns).List(metav1.ListOptions{})
+			svcList, err := f.ClientSet.CoreV1().Services(ns).List(ctx, metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			for _, svc := range svcList.Items {
 				svc.Annotations[framework.ServiceApplicationProtocolKey] = `{"http2":"HTTPS"}`
-				_, err = f.ClientSet.CoreV1().Services(ns).Update(&svc)
+				_, err = f.ClientSet.CoreV1().Services(ns).Update(ctx, &svc)
 				Expect(err).NotTo(HaveOccurred())
 			}
 			detectHttpVersionAndSchemeTest(f, jig, address, "request_version=1.1", httpsScheme)
 
 			By("Switch backend service to use HTTP2")
-			svcList, err = f.ClientSet.CoreV1().Services(ns).List(metav1.ListOptions{})
+			svcList, err = f.ClientSet.CoreV1().Services(ns).List(ctx, metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			for _, svc := range svcList.Items {
 				svc.Annotations[framework.ServiceApplicationProtocolKey] = `{"http2":"HTTP2"}`
-				_, err = f.ClientSet.CoreV1().Services(ns).Update(&svc)
+				_, err = f.ClientSet.CoreV1().Services(ns).Update(ctx, &svc)
 				Expect(err).NotTo(HaveOccurred())
 			}
 			detectHttpVersionAndSchemeTest(f, jig, address, "request_version=2", httpsScheme)
@@ -514,11 +516,11 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 			Expect(usingNEG).To(BeTrue())
 
 			By("Switch backend service to use IG")
-			svcList, err := f.ClientSet.CoreV1().Services(ns).List(metav1.ListOptions{})
+			svcList, err := f.ClientSet.CoreV1().Services(ns).List(ctx, metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			for _, svc := range svcList.Items {
 				svc.Annotations[framework.NEGAnnotation] = `{"ingress": false}`
-				_, err = f.ClientSet.CoreV1().Services(ns).Update(&svc)
+				_, err = f.ClientSet.CoreV1().Services(ns).Update(ctx, &svc)
 				Expect(err).NotTo(HaveOccurred())
 			}
 			wait.Poll(5*time.Second, framework.LoadBalancerPollTimeout, func() (bool, error) {
@@ -527,11 +529,11 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 			jig.WaitForIngress(true)
 
 			By("Switch backend service to use NEG")
-			svcList, err = f.ClientSet.CoreV1().Services(ns).List(metav1.ListOptions{})
+			svcList, err = f.ClientSet.CoreV1().Services(ns).List(ctx, metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			for _, svc := range svcList.Items {
 				svc.Annotations[framework.NEGAnnotation] = `{"ingress": true}`
-				_, err = f.ClientSet.CoreV1().Services(ns).Update(&svc)
+				_, err = f.ClientSet.CoreV1().Services(ns).Update(ctx, &svc)
 				Expect(err).NotTo(HaveOccurred())
 			}
 			wait.Poll(5*time.Second, framework.LoadBalancerPollTimeout, func() (bool, error) {
@@ -559,11 +561,11 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 		It("should sync endpoints to NEG", func() {
 			name := "hostname"
 			scaleAndValidateNEG := func(num int) {
-				scale, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).GetScale(name, metav1.GetOptions{})
+				scale, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).GetScale(ctx, name, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				if scale.Spec.Replicas != int32(num) {
 					scale.Spec.Replicas = int32(num)
-					_, err = f.ClientSet.ExtensionsV1beta1().Deployments(ns).UpdateScale(name, scale)
+					_, err = f.ClientSet.ExtensionsV1beta1().Deployments(ns).UpdateScale(ctx, name, scale)
 					Expect(err).NotTo(HaveOccurred())
 				}
 				wait.Poll(10*time.Second, framework.NEGUpdateTimeout, func() (bool, error) {
@@ -608,10 +610,10 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 			Expect(usingNEG).To(BeTrue())
 
 			By(fmt.Sprintf("Scale backend replicas to %d", replicas))
-			scale, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).GetScale(name, metav1.GetOptions{})
+			scale, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).GetScale(ctx, name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			scale.Spec.Replicas = int32(replicas)
-			_, err = f.ClientSet.ExtensionsV1beta1().Deployments(ns).UpdateScale(name, scale)
+			_, err = f.ClientSet.ExtensionsV1beta1().Deployments(ns).UpdateScale(ctx, name, scale)
 			Expect(err).NotTo(HaveOccurred())
 			wait.Poll(10*time.Second, framework.LoadBalancerPollTimeout, func() (bool, error) {
 				res, err := jig.GetDistinctResponseFromIngress()
@@ -622,17 +624,17 @@ var _ = SIGDescribe("Loadbalancing: L7", func() {
 			})
 
 			By("Trigger rolling update and observe service disruption")
-			deploy, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).Get(name, metav1.GetOptions{})
+			deploy, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			// trigger by changing graceful termination period to 60 seconds
 			gracePeriod := int64(60)
 			deploy.Spec.Template.Spec.TerminationGracePeriodSeconds = &gracePeriod
-			_, err = f.ClientSet.ExtensionsV1beta1().Deployments(ns).Update(deploy)
+			_, err = f.ClientSet.ExtensionsV1beta1().Deployments(ns).Update(ctx, deploy)
 			Expect(err).NotTo(HaveOccurred())
 			wait.Poll(10*time.Second, framework.LoadBalancerPollTimeout, func() (bool, error) {
 				res, err := jig.GetDistinctResponseFromIngress()
 				Expect(err).NotTo(HaveOccurred())
-				deploy, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).Get(name, metav1.GetOptions{})
+				deploy, err := f.ClientSet.ExtensionsV1beta1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred())
 				if int(deploy.Status.UpdatedReplicas) == replicas {
 					if res.Len() == replicas {

@@ -18,6 +18,7 @@ package token
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -62,6 +63,7 @@ func RetrieveValidatedClusterInfo(cfg *kubeadmapi.NodeConfiguration) (*clientcmd
 
 		insecureBootstrapConfig := buildInsecureBootstrapKubeConfig(endpoint, cfg.ClusterName)
 		clusterName := insecureBootstrapConfig.Contexts[insecureBootstrapConfig.CurrentContext].Cluster
+		ctx := context.TODO()
 
 		insecureClient, err := kubeconfigutil.ToClientSet(insecureBootstrapConfig)
 		if err != nil {
@@ -74,7 +76,7 @@ func RetrieveValidatedClusterInfo(cfg *kubeadmapi.NodeConfiguration) (*clientcmd
 		var insecureClusterInfo *v1.ConfigMap
 		wait.PollImmediateInfinite(constants.DiscoveryRetryInterval, func() (bool, error) {
 			var err error
-			insecureClusterInfo, err = insecureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
+			insecureClusterInfo, err = insecureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(ctx, bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
 			if err != nil {
 				fmt.Printf("[discovery] Failed to request cluster info, will try again: [%s]\n", err)
 				return false, nil
@@ -137,7 +139,7 @@ func RetrieveValidatedClusterInfo(cfg *kubeadmapi.NodeConfiguration) (*clientcmd
 		var secureClusterInfo *v1.ConfigMap
 		wait.PollImmediateInfinite(constants.DiscoveryRetryInterval, func() (bool, error) {
 			var err error
-			secureClusterInfo, err = secureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
+			secureClusterInfo, err = secureClient.CoreV1().ConfigMaps(metav1.NamespacePublic).Get(ctx, bootstrapapi.ConfigMapClusterInfo, metav1.GetOptions{})
 			if err != nil {
 				fmt.Printf("[discovery] Failed to request cluster info, will try again: [%s]\n", err)
 				return false, nil

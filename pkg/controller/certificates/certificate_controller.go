@@ -19,6 +19,7 @@ limitations under the License.
 package certificates
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -59,6 +60,7 @@ func NewCertificateController(
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	ctx := context.TODO()
 
 	cc := &CertificateController{
 		kubeClient: kubeClient,
@@ -71,7 +73,7 @@ func NewCertificateController(
 	}
 
 	// Manage the addition/update of certificate requests
-	csrInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	csrInformer.Informer(ctx).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			csr := obj.(*certificates.CertificateSigningRequest)
 			glog.V(4).Infof("Adding certificate request %s", csr.Name)
@@ -100,8 +102,8 @@ func NewCertificateController(
 			cc.enqueueCertificateRequest(obj)
 		},
 	})
-	cc.csrLister = csrInformer.Lister()
-	cc.csrsSynced = csrInformer.Informer().HasSynced
+	cc.csrLister = csrInformer.Lister(ctx)
+	cc.csrsSynced = csrInformer.Informer(ctx).HasSynced
 	return cc
 }
 

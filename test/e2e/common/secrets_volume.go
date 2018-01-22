@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -32,6 +33,7 @@ import (
 
 var _ = Describe("[sig-storage] Secrets", func() {
 	f := framework.NewDefaultFramework("secrets")
+	ctx := context.TODO()
 
 	/*
 		    Testname: secret-volume-mount-without-mapping
@@ -98,7 +100,7 @@ var _ = Describe("[sig-storage] Secrets", func() {
 		secret2.Data = map[string][]byte{
 			"this_should_not_match_content_of_other_secret": []byte("similarly_this_should_not_match_content_of_other_secret\n"),
 		}
-		if secret2, err = f.ClientSet.CoreV1().Secrets(namespace2.Name).Create(secret2); err != nil {
+		if secret2, err = f.ClientSet.CoreV1().Secrets(namespace2.Name).Create(ctx, secret2); err != nil {
 			framework.Failf("unable to create test secret %s: %v", secret2.Name, err)
 		}
 		doSecretE2EWithoutMapping(f, nil /* default mode */, secret2.Name, nil, nil)
@@ -123,7 +125,7 @@ var _ = Describe("[sig-storage] Secrets", func() {
 
 		By(fmt.Sprintf("Creating secret with name %s", secret.Name))
 		var err error
-		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret); err != nil {
+		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, secret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 
@@ -233,12 +235,12 @@ var _ = Describe("[sig-storage] Secrets", func() {
 
 		By(fmt.Sprintf("Creating secret with name %s", deleteSecret.Name))
 		var err error
-		if deleteSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(deleteSecret); err != nil {
+		if deleteSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, deleteSecret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", deleteSecret.Name, err)
 		}
 
 		By(fmt.Sprintf("Creating secret with name %s", updateSecret.Name))
-		if updateSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(updateSecret); err != nil {
+		if updateSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, updateSecret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", updateSecret.Name, err)
 		}
 
@@ -336,18 +338,18 @@ var _ = Describe("[sig-storage] Secrets", func() {
 		Eventually(pollDeleteLogs, podLogTimeout, framework.Poll).Should(ContainSubstring("value-1"))
 
 		By(fmt.Sprintf("Deleting secret %v", deleteSecret.Name))
-		err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(deleteSecret.Name, &metav1.DeleteOptions{})
+		err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(ctx, deleteSecret.Name, &metav1.DeleteOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to delete secret %q in namespace %q", deleteSecret.Name, f.Namespace.Name)
 
 		By(fmt.Sprintf("Updating secret %v", updateSecret.Name))
 		updateSecret.ResourceVersion = "" // to force update
 		delete(updateSecret.Data, "data-1")
 		updateSecret.Data["data-3"] = []byte("value-3")
-		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(updateSecret)
+		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(ctx, updateSecret)
 		Expect(err).NotTo(HaveOccurred(), "Failed to update secret %q in namespace %q", updateSecret.Name, f.Namespace.Name)
 
 		By(fmt.Sprintf("Creating secret with name %s", createSecret.Name))
-		if createSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(createSecret); err != nil {
+		if createSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, createSecret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", createSecret.Name, err)
 		}
 
@@ -383,7 +385,7 @@ func doSecretE2EWithoutMapping(f *framework.Framework, defaultMode *int32, secre
 
 	By(fmt.Sprintf("Creating secret with name %s", secret.Name))
 	var err error
-	if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret); err != nil {
+	if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(context.TODO(), secret); err != nil {
 		framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 	}
 
@@ -455,7 +457,7 @@ func doSecretE2EWithMapping(f *framework.Framework, mode *int32) {
 
 	By(fmt.Sprintf("Creating secret with name %s", secret.Name))
 	var err error
-	if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret); err != nil {
+	if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(context.TODO(), secret); err != nil {
 		framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 	}
 

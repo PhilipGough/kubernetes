@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -49,6 +50,7 @@ except:
 
 var _ = SIGDescribe("ClusterDns [Feature:Example]", func() {
 	f := framework.NewDefaultFramework("cluster-dns")
+	ctx := context.TODO()
 
 	var c clientset.Interface
 	BeforeEach(func() {
@@ -103,7 +105,7 @@ var _ = SIGDescribe("ClusterDns [Feature:Example]", func() {
 		for _, ns := range namespaces {
 			label := labels.SelectorFromSet(labels.Set(map[string]string{"name": backendRcName}))
 			options := metav1.ListOptions{LabelSelector: label.String()}
-			pods, err := c.CoreV1().Pods(ns.Name).List(options)
+			pods, err := c.CoreV1().Pods(ns.Name).List(ctx, options)
 			Expect(err).NotTo(HaveOccurred())
 			err = framework.PodsResponding(c, ns.Name, backendPodName, false, pods)
 			Expect(err).NotTo(HaveOccurred(), "waiting for all pods to respond")
@@ -123,7 +125,7 @@ var _ = SIGDescribe("ClusterDns [Feature:Example]", func() {
 		// This code is probably unnecessary, but let's stay on the safe side.
 		label := labels.SelectorFromSet(labels.Set(map[string]string{"name": backendPodName}))
 		options := metav1.ListOptions{LabelSelector: label.String()}
-		pods, err := c.CoreV1().Pods(namespaces[0].Name).List(options)
+		pods, err := c.CoreV1().Pods(namespaces[0].Name).List(ctx, options)
 
 		if err != nil || pods == nil || len(pods.Items) == 0 {
 			framework.Failf("no running pods found")

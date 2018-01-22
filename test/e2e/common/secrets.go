@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 
 var _ = Describe("[sig-api-machinery] Secrets", func() {
 	f := framework.NewDefaultFramework("secrets")
+	ctx := context.TODO()
 
 	/*
 		    Testname: secret-env-vars
@@ -41,7 +43,7 @@ var _ = Describe("[sig-api-machinery] Secrets", func() {
 
 		By(fmt.Sprintf("Creating secret with name %s", secret.Name))
 		var err error
-		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret); err != nil {
+		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, secret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 
@@ -89,7 +91,7 @@ var _ = Describe("[sig-api-machinery] Secrets", func() {
 		secret := newEnvFromSecret(f.Namespace.Name, name)
 		By(fmt.Sprintf("creating secret %v/%v", f.Namespace.Name, secret.Name))
 		var err error
-		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret); err != nil {
+		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, secret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 

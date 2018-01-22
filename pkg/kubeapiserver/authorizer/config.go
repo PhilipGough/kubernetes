@@ -17,6 +17,7 @@ limitations under the License.
 package authorizer
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -107,11 +108,12 @@ func (config AuthorizationConfig) New() (authorizer.Authorizer, authorizer.RuleR
 			authorizers = append(authorizers, webhookAuthorizer)
 			ruleResolvers = append(ruleResolvers, webhookAuthorizer)
 		case modes.ModeRBAC:
+			ctx := context.TODO()
 			rbacAuthorizer := rbac.New(
-				&rbac.RoleGetter{Lister: config.VersionedInformerFactory.Rbac().V1().Roles().Lister()},
-				&rbac.RoleBindingLister{Lister: config.VersionedInformerFactory.Rbac().V1().RoleBindings().Lister()},
-				&rbac.ClusterRoleGetter{Lister: config.VersionedInformerFactory.Rbac().V1().ClusterRoles().Lister()},
-				&rbac.ClusterRoleBindingLister{Lister: config.VersionedInformerFactory.Rbac().V1().ClusterRoleBindings().Lister()},
+				&rbac.RoleGetter{Lister: config.VersionedInformerFactory.Rbac().V1().Roles().Lister(ctx)},
+				&rbac.RoleBindingLister{Lister: config.VersionedInformerFactory.Rbac().V1().RoleBindings().Lister(ctx)},
+				&rbac.ClusterRoleGetter{Lister: config.VersionedInformerFactory.Rbac().V1().ClusterRoles().Lister(ctx)},
+				&rbac.ClusterRoleBindingLister{Lister: config.VersionedInformerFactory.Rbac().V1().ClusterRoleBindings().Lister(ctx)},
 			)
 			authorizers = append(authorizers, rbacAuthorizer)
 			ruleResolvers = append(ruleResolvers, rbacAuthorizer)

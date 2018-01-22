@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/api/core/v1"
@@ -35,6 +36,7 @@ import (
 var _ = SIGDescribe("Firewall rule", func() {
 	var firewall_test_name = "firewall-test"
 	f := framework.NewDefaultFramework(firewall_test_name)
+	ctx := context.TODO()
 
 	var cs clientset.Interface
 	var cloudConfig framework.CloudConfig
@@ -78,7 +80,7 @@ var _ = SIGDescribe("Firewall rule", func() {
 				svc.Spec.Type = v1.ServiceTypeNodePort
 				svc.Spec.LoadBalancerSourceRanges = nil
 			})
-			Expect(cs.CoreV1().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
+			Expect(cs.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, nil)).NotTo(HaveOccurred())
 			By("Waiting for the local traffic health check firewall rule to be deleted")
 			localHCFwName := framework.MakeHealthCheckFirewallNameForLBService(clusterID, cloudprovider.GetLoadBalancerName(svc), false)
 			_, err := framework.WaitForFirewallRule(gceCloud, localHCFwName, false, framework.LoadBalancerCleanupTimeout)
@@ -120,7 +122,7 @@ var _ = SIGDescribe("Firewall rule", func() {
 			jig.LaunchNetexecPodOnNode(f, nodeName, podName, framework.FirewallTestHttpPort, framework.FirewallTestUdpPort, true)
 			defer func() {
 				framework.Logf("Cleaning up the netexec pod: %v", podName)
-				Expect(cs.CoreV1().Pods(ns).Delete(podName, nil)).NotTo(HaveOccurred())
+				Expect(cs.CoreV1().Pods(ns).Delete(ctx, podName, nil)).NotTo(HaveOccurred())
 			}()
 		}
 

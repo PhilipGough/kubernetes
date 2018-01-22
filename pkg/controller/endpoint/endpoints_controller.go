@@ -17,6 +17,7 @@ limitations under the License.
 package endpoint
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -83,27 +84,27 @@ func NewEndpointController(podInformer coreinformers.PodInformer, serviceInforme
 		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "endpoint"),
 		workerLoopPeriod: time.Second,
 	}
-
-	serviceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	ctx := context.TODO()
+	serviceInformer.Informer(ctx).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: e.enqueueService,
 		UpdateFunc: func(old, cur interface{}) {
 			e.enqueueService(cur)
 		},
 		DeleteFunc: e.enqueueService,
 	})
-	e.serviceLister = serviceInformer.Lister()
-	e.servicesSynced = serviceInformer.Informer().HasSynced
+	e.serviceLister = serviceInformer.Lister(ctx)
+	e.servicesSynced = serviceInformer.Informer(ctx).HasSynced
 
-	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	podInformer.Informer(ctx).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    e.addPod,
 		UpdateFunc: e.updatePod,
 		DeleteFunc: e.deletePod,
 	})
-	e.podLister = podInformer.Lister()
-	e.podsSynced = podInformer.Informer().HasSynced
+	e.podLister = podInformer.Lister(ctx)
+	e.podsSynced = podInformer.Informer(ctx).HasSynced
 
-	e.endpointsLister = endpointsInformer.Lister()
-	e.endpointsSynced = endpointsInformer.Informer().HasSynced
+	e.endpointsLister = endpointsInformer.Lister(ctx)
+	e.endpointsSynced = endpointsInformer.Informer(ctx).HasSynced
 
 	return e
 }
@@ -393,13 +394,14 @@ func (e *EndpointController) syncService(key string) error {
 		return err
 	}
 	service, err := e.serviceLister.Services(namespace).Get(name)
+	ctx := context.TODO()
 	if err != nil {
 		// Delete the corresponding endpoint, as the service has been deleted.
 		// TODO: Please note that this will delete an endpoint when a
 		// service is deleted. However, if we're down at the time when
 		// the service is deleted, we will miss that deletion, so this
 		// doesn't completely solve the problem. See #6877.
-		err = e.client.CoreV1().Endpoints(namespace).Delete(name, nil)
+		err = e.client.CoreV1().Endpoints(namespace).Delete(ctx, name, nil)
 		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
@@ -513,10 +515,10 @@ func (e *EndpointController) syncService(key string) error {
 	glog.V(4).Infof("Update endpoints for %v/%v, ready: %d not ready: %d", service.Namespace, service.Name, totalReadyEps, totalNotReadyEps)
 	if createEndpoints {
 		// No previous endpoints, create them
-		_, err = e.client.CoreV1().Endpoints(service.Namespace).Create(newEndpoints)
+		_, err = e.client.CoreV1().Endpoints(service.Namespace).Create(ctx, newEndpoints)
 	} else {
 		// Pre-existing
-		_, err = e.client.CoreV1().Endpoints(service.Namespace).Update(newEndpoints)
+		_, err = e.client.CoreV1().Endpoints(service.Namespace).Update(ctx, newEndpoints)
 	}
 	if err != nil {
 		if createEndpoints && errors.IsForbidden(err) {

@@ -25,6 +25,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"time"
+	"context"
 
 	"github.com/golang/glog"
 
@@ -70,7 +71,7 @@ func NewCSRCleanerController(
 ) *CSRCleanerController {
 	return &CSRCleanerController{
 		csrClient: csrClient,
-		csrLister: csrInformer.Lister(),
+		csrLister: csrInformer.Lister(context.TODO()),
 	}
 }
 
@@ -108,7 +109,7 @@ func (ccc *CSRCleanerController) handle(csr *capi.CertificateSigningRequest) err
 		return err
 	}
 	if isIssuedPastDeadline(csr) || isDeniedPastDeadline(csr) || isPendingPastDeadline(csr) || isIssuedExpired {
-		if err := ccc.csrClient.Delete(csr.Name, nil); err != nil {
+		if err := ccc.csrClient.Delete(context.TODO(),csr.Name, nil); err != nil {
 			return fmt.Errorf("unable to delete CSR %q: %v", csr.Name, err)
 		}
 	}

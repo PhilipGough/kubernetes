@@ -17,6 +17,7 @@ limitations under the License.
 package bootstrap
 
 import (
+	"context"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -85,11 +86,12 @@ func TestSimpleSign(t *testing.T) {
 	}
 
 	cm := newConfigMap("", "")
-	configMaps.Informer().GetIndexer().Add(cm)
+	ctx := context.TODO()
+	configMaps.Informer(ctx).GetIndexer().Add(cm)
 
 	secret := newTokenSecret(testTokenID, "tokenSecret")
 	addSecretSigningUsage(secret, "true")
-	secrets.Informer().GetIndexer().Add(secret)
+	secrets.Informer(ctx).GetIndexer().Add(secret)
 
 	signer.signConfigMap()
 
@@ -109,11 +111,12 @@ func TestNoSignNeeded(t *testing.T) {
 	}
 
 	cm := newConfigMap(testTokenID, "eyJhbGciOiJIUzI1NiIsImtpZCI6ImFiYzEyMyJ9..QSxpUG7Q542CirTI2ECPSZjvBOJURUW5a7XqFpNI958")
-	configMaps.Informer().GetIndexer().Add(cm)
+	ctx := context.TODO()
+	configMaps.Informer(ctx).GetIndexer().Add(cm)
 
 	secret := newTokenSecret(testTokenID, "tokenSecret")
 	addSecretSigningUsage(secret, "true")
-	secrets.Informer().GetIndexer().Add(secret)
+	secrets.Informer(ctx).GetIndexer().Add(secret)
 
 	signer.signConfigMap()
 
@@ -127,11 +130,12 @@ func TestUpdateSignature(t *testing.T) {
 	}
 
 	cm := newConfigMap(testTokenID, "old signature")
-	configMaps.Informer().GetIndexer().Add(cm)
+	ctx := context.TODO()
+	configMaps.Informer(ctx).GetIndexer().Add(cm)
 
 	secret := newTokenSecret(testTokenID, "tokenSecret")
 	addSecretSigningUsage(secret, "true")
-	secrets.Informer().GetIndexer().Add(secret)
+	secrets.Informer(ctx).GetIndexer().Add(secret)
 
 	signer.signConfigMap()
 
@@ -151,7 +155,7 @@ func TestRemoveSignature(t *testing.T) {
 	}
 
 	cm := newConfigMap(testTokenID, "old signature")
-	configMaps.Informer().GetIndexer().Add(cm)
+	configMaps.Informer(context.TODO()).GetIndexer().Add(cm)
 
 	signer.signConfigMap()
 

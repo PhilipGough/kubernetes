@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -88,6 +89,9 @@ func verifyFlags() error {
 func main() {
 	registerFlags()
 	flag.Parse()
+
+	ctx := context.TODO()
+
 	if err := verifyFlags(); err != nil {
 		glog.Errorf("Failed to verify flags: %v", err)
 		os.Exit(1)
@@ -133,7 +137,7 @@ func main() {
 		},
 	}
 	glog.Infof("Creating namespace %s...", ns.Name)
-	if _, err := cs.CoreV1().Namespaces().Create(ns); err != nil {
+	if _, err := cs.CoreV1().Namespaces().Create(ctx, ns); err != nil {
 		glog.Errorf("Failed to create namespace %s: %v", ns.Name, err)
 		testSuccessFlag = false
 		return
@@ -141,7 +145,7 @@ func main() {
 	if cleanup {
 		defer func() {
 			glog.Infof("Deleting namespace %s...", ns.Name)
-			if err := cs.CoreV1().Namespaces().Delete(ns.Name, nil); err != nil {
+			if err := cs.CoreV1().Namespaces().Delete(ctx, ns.Name, nil); err != nil {
 				glog.Errorf("Failed to delete namespace %s: %v", ns.Name, err)
 				testSuccessFlag = false
 			}

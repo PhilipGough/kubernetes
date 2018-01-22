@@ -17,6 +17,7 @@ limitations under the License.
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -72,10 +73,11 @@ type TokenCleaner struct {
 
 // NewTokenCleaner returns a new *NewTokenCleaner.
 func NewTokenCleaner(cl clientset.Interface, secrets coreinformers.SecretInformer, options TokenCleanerOptions) (*TokenCleaner, error) {
+	ctx := context.TODO()
 	e := &TokenCleaner{
 		client:               cl,
-		secretLister:         secrets.Lister(),
-		secretSynced:         secrets.Informer().HasSynced,
+		secretLister:         secrets.Lister(ctx),
+		secretSynced:         secrets.Informer(ctx).HasSynced,
 		tokenSecretNamespace: options.TokenSecretNamespace,
 		queue:                workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "token_cleaner"),
 	}
@@ -86,7 +88,7 @@ func NewTokenCleaner(cl clientset.Interface, secrets coreinformers.SecretInforme
 		}
 	}
 
-	secrets.Informer().AddEventHandlerWithResyncPeriod(
+	secrets.Informer(ctx).AddEventHandlerWithResyncPeriod(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -193,7 +195,7 @@ func (tc *TokenCleaner) evalSecret(o interface{}) {
 		if len(secret.UID) > 0 {
 			options = &metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &secret.UID}}
 		}
-		err := tc.client.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, options)
+		err := tc.client.CoreV1().Secrets(secret.Namespace).Delete(context.TODO(), secret.Name, options)
 		// NotFound isn't a real error (it's already been deleted)
 		// Conflict isn't a real error (the UID precondition failed)
 		if err != nil && !apierrors.IsConflict(err) && !apierrors.IsNotFound(err) {

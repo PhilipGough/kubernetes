@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -31,6 +32,7 @@ import (
 
 var _ = Describe("[sig-storage] ConfigMap", func() {
 	f := framework.NewDefaultFramework("configmap")
+	ctx := context.TODO()
 
 	/*
 		    Testname: configmap-nomap-simple
@@ -127,7 +129,7 @@ var _ = Describe("[sig-storage] ConfigMap", func() {
 
 		By(fmt.Sprintf("Creating configMap with name %s", configMap.Name))
 		var err error
-		if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap); err != nil {
+		if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, configMap); err != nil {
 			framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 		}
 
@@ -177,7 +179,7 @@ var _ = Describe("[sig-storage] ConfigMap", func() {
 		By(fmt.Sprintf("Updating configmap %v", configMap.Name))
 		configMap.ResourceVersion = "" // to force update
 		configMap.Data["data-1"] = "value-2"
-		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(configMap)
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(ctx, configMap)
 		Expect(err).NotTo(HaveOccurred(), "Failed to update configmap %q in namespace %q", configMap.Name, f.Namespace.Name)
 
 		By("waiting to observe update in volume")
@@ -209,7 +211,7 @@ var _ = Describe("[sig-storage] ConfigMap", func() {
 
 		By(fmt.Sprintf("Creating configMap with name %s", configMap.Name))
 		var err error
-		if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap); err != nil {
+		if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, configMap); err != nil {
 			framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 		}
 
@@ -327,12 +329,12 @@ var _ = Describe("[sig-storage] ConfigMap", func() {
 
 		By(fmt.Sprintf("Creating configMap with name %s", deleteConfigMap.Name))
 		var err error
-		if deleteConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(deleteConfigMap); err != nil {
+		if deleteConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, deleteConfigMap); err != nil {
 			framework.Failf("unable to create test configMap %s: %v", deleteConfigMap.Name, err)
 		}
 
 		By(fmt.Sprintf("Creating configMap with name %s", updateConfigMap.Name))
-		if updateConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(updateConfigMap); err != nil {
+		if updateConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, updateConfigMap); err != nil {
 			framework.Failf("unable to create test configMap %s: %v", updateConfigMap.Name, err)
 		}
 
@@ -436,18 +438,18 @@ var _ = Describe("[sig-storage] ConfigMap", func() {
 		Eventually(pollDeleteLogs, podLogTimeout, framework.Poll).Should(ContainSubstring("value-1"))
 
 		By(fmt.Sprintf("Deleting configmap %v", deleteConfigMap.Name))
-		err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(deleteConfigMap.Name, &metav1.DeleteOptions{})
+		err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(ctx, deleteConfigMap.Name, &metav1.DeleteOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to delete configmap %q in namespace %q", deleteConfigMap.Name, f.Namespace.Name)
 
 		By(fmt.Sprintf("Updating configmap %v", updateConfigMap.Name))
 		updateConfigMap.ResourceVersion = "" // to force update
 		delete(updateConfigMap.Data, "data-1")
 		updateConfigMap.Data["data-3"] = "value-3"
-		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(updateConfigMap)
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(ctx, updateConfigMap)
 		Expect(err).NotTo(HaveOccurred(), "Failed to update configmap %q in namespace %q", updateConfigMap.Name, f.Namespace.Name)
 
 		By(fmt.Sprintf("Creating configMap with name %s", createConfigMap.Name))
-		if createConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(createConfigMap); err != nil {
+		if createConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, createConfigMap); err != nil {
 			framework.Failf("unable to create test configMap %s: %v", createConfigMap.Name, err)
 		}
 
@@ -475,7 +477,7 @@ var _ = Describe("[sig-storage] ConfigMap", func() {
 
 		By(fmt.Sprintf("Creating configMap with name %s", configMap.Name))
 		var err error
-		if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap); err != nil {
+		if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, configMap); err != nil {
 			framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 		}
 
@@ -563,7 +565,7 @@ func doConfigMapE2EWithoutMappings(f *framework.Framework, uid, fsGroup int64, d
 
 	By(fmt.Sprintf("Creating configMap with name %s", configMap.Name))
 	var err error
-	if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap); err != nil {
+	if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), configMap); err != nil {
 		framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 	}
 
@@ -643,7 +645,7 @@ func doConfigMapE2EWithMappings(f *framework.Framework, uid, fsGroup int64, item
 	By(fmt.Sprintf("Creating configMap with name %s", configMap.Name))
 
 	var err error
-	if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap); err != nil {
+	if configMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), configMap); err != nil {
 		framework.Failf("unable to create test configMap %s: %v", configMap.Name, err)
 	}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_node
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -203,12 +204,13 @@ func setKubeletConfiguration(f *framework.Framework, kubeCfg *kubeletconfig.Kube
 
 // sets the current node's configSource, this should only be called from Serial tests
 func setNodeConfigSource(f *framework.Framework, source *apiv1.NodeConfigSource) error {
+	ctx := context.TODO()
 	// since this is a serial test, we just get the node, change the source, and then update it
 	// this prevents any issues with the patch API from affecting the test results
 	nodeclient := f.ClientSet.CoreV1().Nodes()
 
 	// get the node
-	node, err := nodeclient.Get(framework.TestContext.NodeName, metav1.GetOptions{})
+	node, err := nodeclient.Get(ctx, framework.TestContext.NodeName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -217,7 +219,7 @@ func setNodeConfigSource(f *framework.Framework, source *apiv1.NodeConfigSource)
 	node.Spec.ConfigSource = source
 
 	// update to the new source
-	_, err = nodeclient.Update(node)
+	_, err = nodeclient.Update(ctx, node)
 	if err != nil {
 		return err
 	}
@@ -281,7 +283,7 @@ func decodeConfigz(resp *http.Response) (*kubeletconfig.KubeletConfiguration, er
 // creates a configmap containing kubeCfg in kube-system namespace
 func createConfigMap(f *framework.Framework, internalKC *kubeletconfig.KubeletConfiguration) (*apiv1.ConfigMap, error) {
 	cmap := newKubeletConfigMap("testcfg", internalKC)
-	cmap, err := f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(cmap)
+	cmap, err := f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(context.TODO(), cmap)
 	if err != nil {
 		return nil, err
 	}

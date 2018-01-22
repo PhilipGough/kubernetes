@@ -17,6 +17,7 @@ limitations under the License.
 package vsphere
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -92,6 +93,7 @@ func TestSecretCredentialManager_GetCredential(t *testing.T) {
 		ObjectMeta: metaObj,
 		Data:       map[string][]byte{},
 	}
+	ctx := context.TODO()
 
 	tests := []testEnv{
 		{
@@ -189,7 +191,7 @@ func TestSecretCredentialManager_GetCredential(t *testing.T) {
 	secretCredentialManager := &SecretCredentialManager{
 		SecretName:      secretName,
 		SecretNamespace: secretNamespace,
-		SecretLister:    secretInformer.Lister(),
+		SecretLister:    secretInformer.Lister(ctx),
 		Cache: &SecretCache{
 			VirtualCenter: make(map[string]*Credential),
 		},
@@ -204,7 +206,7 @@ func TestSecretCredentialManager_GetCredential(t *testing.T) {
 			t.Fatal("Failed to get all secrets from sharedInformer. error: ", err)
 		}
 		for _, secret := range secrets {
-			secretInformer.Informer().GetIndexer().Delete(secret)
+			secretInformer.Informer(ctx).GetIndexer().Delete(secret)
 		}
 	}
 
@@ -215,7 +217,7 @@ func TestSecretCredentialManager_GetCredential(t *testing.T) {
 			case addSecretOp:
 				expected := test.expectedValues[ntest].(OpSecretTest)
 				t.Logf("Adding secret: %s", expected.secret)
-				err := secretInformer.Informer().GetIndexer().Add(expected.secret)
+				err := secretInformer.Informer(ctx).GetIndexer().Add(expected.secret)
 				if err != nil {
 					t.Fatalf("Failed to add secret to internal cache: %v", err)
 				}
@@ -237,7 +239,7 @@ func TestSecretCredentialManager_GetCredential(t *testing.T) {
 			case deleteSecretOp:
 				expected := test.expectedValues[ntest].(OpSecretTest)
 				t.Logf("Deleting secret: %s", expected.secret)
-				err := secretInformer.Informer().GetIndexer().Delete(expected.secret)
+				err := secretInformer.Informer(ctx).GetIndexer().Delete(expected.secret)
 				if err != nil {
 					t.Fatalf("Failed to delete secret to internal cache: %v", err)
 				}

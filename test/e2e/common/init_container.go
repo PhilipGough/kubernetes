@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -37,6 +38,7 @@ import (
 
 var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 	f := framework.NewDefaultFramework("init-container")
+	ctx := context.TODO()
 	var podClient *framework.PodClient
 	BeforeEach(func() {
 		podClient = f.PodClient()
@@ -79,7 +81,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		}
 		framework.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		w, err := podClient.Watch(ctx, metav1.SingleObject(startedPod.ObjectMeta))
 		Expect(err).NotTo(HaveOccurred(), "error watching a pod")
 		wr := watch.NewRecorder(w)
 		event, err := watch.Until(framework.PodStartTimeout, wr, conditions.PodCompleted)
@@ -140,7 +142,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		}
 		framework.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		w, err := podClient.Watch(ctx, metav1.SingleObject(startedPod.ObjectMeta))
 		Expect(err).NotTo(HaveOccurred(), "error watching a pod")
 		wr := watch.NewRecorder(w)
 		event, err := watch.Until(framework.PodStartTimeout, wr, conditions.PodRunning)
@@ -202,7 +204,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		}
 		framework.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		w, err := podClient.Watch(ctx, metav1.SingleObject(startedPod.ObjectMeta))
 		Expect(err).NotTo(HaveOccurred(), "error watching a pod")
 
 		wr := watch.NewRecorder(w)
@@ -312,7 +314,7 @@ var _ = framework.KubeDescribe("InitContainer [NodeConformance]", func() {
 		framework.Logf("PodSpec: initContainers in spec.initContainers")
 		startedPod := podClient.Create(pod)
 
-		w, err := podClient.Watch(metav1.SingleObject(startedPod.ObjectMeta))
+		w, err := podClient.Watch(ctx, metav1.SingleObject(startedPod.ObjectMeta))
 		Expect(err).NotTo(HaveOccurred(), "error watching a pod")
 
 		wr := watch.NewRecorder(w)

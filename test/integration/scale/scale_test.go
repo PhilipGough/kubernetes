@@ -17,6 +17,7 @@ limitations under the License.
 package scale
 
 import (
+	"context"
 	"encoding/json"
 	"path"
 	"strings"
@@ -52,6 +53,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestScaleSubresources(t *testing.T) {
+	ctx := context.TODO()
 	clientSet, tearDown := setup(t)
 	defer tearDown()
 
@@ -133,16 +135,16 @@ func TestScaleSubresources(t *testing.T) {
 	}
 
 	// Create objects required to exercise scale subresources
-	if _, err := clientSet.CoreV1().ReplicationControllers("default").Create(rcStub); err != nil {
+	if _, err := clientSet.CoreV1().ReplicationControllers("default").Create(ctx, rcStub); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := clientSet.AppsV1beta2().ReplicaSets("default").Create(rsStub); err != nil {
+	if _, err := clientSet.AppsV1beta2().ReplicaSets("default").Create(ctx, rsStub); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := clientSet.AppsV1beta2().Deployments("default").Create(deploymentStub); err != nil {
+	if _, err := clientSet.AppsV1beta2().Deployments("default").Create(ctx, deploymentStub); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := clientSet.AppsV1beta2().StatefulSets("default").Create(ssStub); err != nil {
+	if _, err := clientSet.AppsV1beta2().StatefulSets("default").Create(ctx, ssStub); err != nil {
 		t.Fatal(err)
 	}
 

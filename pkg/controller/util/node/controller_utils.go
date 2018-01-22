@@ -53,10 +53,11 @@ var (
 // and return true if any pods were deleted, or were found pending
 // deletion.
 func DeletePods(kubeClient clientset.Interface, recorder record.EventRecorder, nodeName, nodeUID string, daemonStore extensionslisters.DaemonSetLister) (bool, error) {
+	ctx := context.TODO()
 	remaining := false
 	selector := fields.OneTermEqualSelector(api.PodHostField, nodeName).String()
 	options := metav1.ListOptions{FieldSelector: selector}
-	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(options)
+	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ctx, options)
 	var updateErrList []error
 
 	if err != nil {
@@ -94,7 +95,7 @@ func DeletePods(kubeClient clientset.Interface, recorder record.EventRecorder, n
 
 		glog.V(2).Infof("Starting deletion of pod %v/%v", pod.Namespace, pod.Name)
 		recorder.Eventf(&pod, v1.EventTypeNormal, "NodeControllerEviction", "Marking for deletion Pod %s from Node %s", pod.Name, nodeName)
-		if err := kubeClient.CoreV1().Pods(pod.Namespace).Delete(pod.Name, nil); err != nil {
+		if err := kubeClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, nil); err != nil {
 			return false, err
 		}
 		remaining = true
@@ -119,7 +120,7 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 
 	var updatedPod *v1.Pod
 	var err error
-	if updatedPod, err = kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(pod); err != nil {
+	if updatedPod, err = kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), pod); err != nil {
 		return nil, err
 	}
 	return updatedPod, nil
@@ -128,7 +129,7 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 // ForcefullyDeleteNode deletes the node immediately. The pods on the
 // node are cleaned up by the podGC.
 func ForcefullyDeleteNode(kubeClient clientset.Interface, nodeName string) error {
-	if err := kubeClient.CoreV1().Nodes().Delete(nodeName, nil); err != nil {
+	if err := kubeClient.CoreV1().Nodes().Delete(context.TODO(), nodeName, nil); err != nil {
 		return fmt.Errorf("unable to delete node %q: %v", nodeName, err)
 	}
 	return nil
@@ -138,9 +139,10 @@ func ForcefullyDeleteNode(kubeClient clientset.Interface, nodeName string) error
 // given node from master return true if success
 func MarkAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 	nodeName := node.Name
+	ctx := context.TODO()
 	glog.V(2).Infof("Update ready status of pods on node [%v]", nodeName)
 	opts := metav1.ListOptions{FieldSelector: fields.OneTermEqualSelector(api.PodHostField, nodeName).String()}
-	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(opts)
+	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ctx, opts)
 	if err != nil {
 		return err
 	}
@@ -156,7 +158,7 @@ func MarkAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 			if cond.Type == v1.PodReady {
 				pod.Status.Conditions[i].Status = v1.ConditionFalse
 				glog.V(2).Infof("Updating ready status of pod %v to false", pod.Name)
-				_, err := kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(&pod)
+				_, err := kubeClient.CoreV1().Pods(pod.Namespace).UpdateStatus(ctx, &pod)
 				if err != nil {
 					glog.Warningf("Failed to update status for pod %q: %v", format.Pod(&pod), err)
 					errMsg = append(errMsg, fmt.Sprintf("%v", err))

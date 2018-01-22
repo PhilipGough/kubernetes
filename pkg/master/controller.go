@@ -17,6 +17,7 @@ limitations under the License.
 package master
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -250,12 +251,12 @@ func createEndpointPortSpec(endpointPort int, endpointPortName string, extraEndp
 // CreateMasterServiceIfNeeded will create the specified service if it
 // doesn't already exist.
 func (c *Controller) CreateOrUpdateMasterServiceIfNeeded(serviceName string, serviceIP net.IP, servicePorts []api.ServicePort, serviceType api.ServiceType, reconcile bool) error {
-	if s, err := c.ServiceClient.Services(metav1.NamespaceDefault).Get(serviceName, metav1.GetOptions{}); err == nil {
+	if s, err := c.ServiceClient.Services(metav1.NamespaceDefault).Get(context.TODO(), serviceName, metav1.GetOptions{}); err == nil {
 		// The service already exists.
 		if reconcile {
 			if svc, updated := reconcilers.GetMasterServiceUpdateIfNeeded(s, servicePorts, serviceType); updated {
 				glog.Warningf("Resetting master service %q to %#v", serviceName, svc)
-				_, err := c.ServiceClient.Services(metav1.NamespaceDefault).Update(svc)
+				_, err := c.ServiceClient.Services(metav1.NamespaceDefault).Update(context.TODO(), svc)
 				return err
 			}
 		}
@@ -277,7 +278,7 @@ func (c *Controller) CreateOrUpdateMasterServiceIfNeeded(serviceName string, ser
 		},
 	}
 
-	_, err := c.ServiceClient.Services(metav1.NamespaceDefault).Create(svc)
+	_, err := c.ServiceClient.Services(metav1.NamespaceDefault).Create(context.TODO(), svc)
 	if errors.IsAlreadyExists(err) {
 		return c.CreateOrUpdateMasterServiceIfNeeded(serviceName, serviceIP, servicePorts, serviceType, reconcile)
 	}

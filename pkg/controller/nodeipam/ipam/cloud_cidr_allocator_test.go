@@ -17,6 +17,7 @@ limitations under the License.
 package ipam
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -38,12 +39,13 @@ func TestBoundedRetries(t *testing.T) {
 	clientSet := fake.NewSimpleClientset()
 	updateChan := make(chan string, 1) // need to buffer as we are using only on go routine
 	stopChan := make(chan struct{})
+	ctx := context.TODO()
 	sharedInfomer := informers.NewSharedInformerFactory(clientSet, 1*time.Hour)
 	ca := &cloudCIDRAllocator{
 		client:            clientSet,
 		nodeUpdateChannel: updateChan,
-		nodeLister:        sharedInfomer.Core().V1().Nodes().Lister(),
-		nodesSynced:       sharedInfomer.Core().V1().Nodes().Informer().HasSynced,
+		nodeLister:        sharedInfomer.Core().V1().Nodes().Lister(ctx),
+		nodesSynced:       sharedInfomer.Core().V1().Nodes().Informer(ctx).HasSynced,
 		nodesInProcessing: map[string]*nodeProcessingInfo{},
 	}
 	go ca.worker(stopChan)

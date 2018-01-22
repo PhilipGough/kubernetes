@@ -19,6 +19,7 @@ package scheduler
 // This file tests the scheduler.
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -82,6 +83,7 @@ func PriorityTwo(pod *v1.Pod, nodeNameToInfo map[string]*schedulercache.NodeInfo
 // from configurations provided by a ConfigMap object and then verifies that the
 // configuration is applied correctly.
 func TestSchedulerCreationFromConfigMap(t *testing.T) {
+	ctx := context.TODO()
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
@@ -89,7 +91,7 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	clientSet := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
-	defer clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
+	defer clientSet.CoreV1().Nodes().DeleteCollection(ctx, nil, metav1.ListOptions{})
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
 
 	// Pre-register some predicate and priority functions
@@ -177,7 +179,7 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 		}
 
 		policyConfigMap.APIVersion = "v1"
-		clientSet.CoreV1().ConfigMaps(metav1.NamespaceSystem).Create(&policyConfigMap)
+		clientSet.CoreV1().ConfigMaps(metav1.NamespaceSystem).Create(ctx, &policyConfigMap)
 
 		eventBroadcaster := record.NewBroadcaster()
 		eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientSet.CoreV1().Events("")})
@@ -236,7 +238,7 @@ func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
 	defer framework.DeleteTestingNamespace(ns, s, t)
 
 	clientSet := clientset.NewForConfigOrDie(&restclient.Config{Host: s.URL, ContentConfig: restclient.ContentConfig{GroupVersion: &schema.GroupVersion{Group: "", Version: "v1"}}})
-	defer clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
+	defer clientSet.CoreV1().Nodes().DeleteCollection(context.TODO(), nil, metav1.ListOptions{})
 
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
 
@@ -271,13 +273,14 @@ func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
 }
 
 func TestUnschedulableNodes(t *testing.T) {
+	ctx := context.TODO()
 	context := initTest(t, "unschedulable-nodes")
 	defer cleanupTest(t, context)
 
 	nodeLister := context.schedulerConfigFactory.GetNodeLister()
 	// NOTE: This test cannot run in parallel, because it is creating and deleting
 	// non-namespaced objects (Nodes).
-	defer context.clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
+	defer context.clientSet.CoreV1().Nodes().DeleteCollection(ctx, nil, metav1.ListOptions{})
 
 	goodCondition := v1.NodeCondition{
 		Type:              v1.NodeReady,
@@ -322,7 +325,7 @@ func TestUnschedulableNodes(t *testing.T) {
 		{
 			makeUnSchedulable: func(t *testing.T, n *v1.Node, nodeLister corelisters.NodeLister, c clientset.Interface) {
 				n.Spec.Unschedulable = true
-				if _, err := c.CoreV1().Nodes().Update(n); err != nil {
+				if _, err := c.CoreV1().Nodes().Update(ctx, n); err != nil {
 					t.Fatalf("Failed to update node with unschedulable=true: %v", err)
 				}
 				err = waitForReflection(t, nodeLister, nodeKey, func(node interface{}) bool {
@@ -338,7 +341,7 @@ func TestUnschedulableNodes(t *testing.T) {
 			},
 			makeSchedulable: func(t *testing.T, n *v1.Node, nodeLister corelisters.NodeLister, c clientset.Interface) {
 				n.Spec.Unschedulable = false
-				if _, err := c.CoreV1().Nodes().Update(n); err != nil {
+				if _, err := c.CoreV1().Nodes().Update(ctx, n); err != nil {
 					t.Fatalf("Failed to update node with unschedulable=false: %v", err)
 				}
 				err = waitForReflection(t, nodeLister, nodeKey, func(node interface{}) bool {
@@ -358,7 +361,7 @@ func TestUnschedulableNodes(t *testing.T) {
 					},
 					Conditions: []v1.NodeCondition{badCondition},
 				}
-				if _, err = c.CoreV1().Nodes().UpdateStatus(n); err != nil {
+				if _, err = c.CoreV1().Nodes().UpdateStatus(ctx, n); err != nil {
 					t.Fatalf("Failed to update node with bad status condition: %v", err)
 				}
 				err = waitForReflection(t, nodeLister, nodeKey, func(node interface{}) bool {
@@ -375,7 +378,7 @@ func TestUnschedulableNodes(t *testing.T) {
 					},
 					Conditions: []v1.NodeCondition{goodCondition},
 				}
-				if _, err = c.CoreV1().Nodes().UpdateStatus(n); err != nil {
+				if _, err = c.CoreV1().Nodes().UpdateStatus(ctx, n); err != nil {
 					t.Fatalf("Failed to update node with healthy status condition: %v", err)
 				}
 				err = waitForReflection(t, nodeLister, nodeKey, func(node interface{}) bool {
@@ -389,7 +392,7 @@ func TestUnschedulableNodes(t *testing.T) {
 	}
 
 	for i, mod := range nodeModifications {
-		unSchedNode, err := context.clientSet.CoreV1().Nodes().Create(node)
+		unSchedNode, err := context.clientSet.CoreV1().Nodes().Create(ctx, node)
 		if err != nil {
 			t.Fatalf("Failed to create node: %v", err)
 		}
@@ -416,7 +419,7 @@ func TestUnschedulableNodes(t *testing.T) {
 		}
 
 		// Apply the schedulable modification to the node, and wait for the reflection
-		schedNode, err := context.clientSet.CoreV1().Nodes().Get(unSchedNode.Name, metav1.GetOptions{})
+		schedNode, err := context.clientSet.CoreV1().Nodes().Get(ctx, unSchedNode.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Failed to get node: %v", err)
 		}
@@ -432,7 +435,7 @@ func TestUnschedulableNodes(t *testing.T) {
 		if err := deletePod(context.clientSet, myPod.Name, myPod.Namespace); err != nil {
 			t.Errorf("Failed to delete pod: %v", err)
 		}
-		err = context.clientSet.CoreV1().Nodes().Delete(schedNode.Name, nil)
+		err = context.clientSet.CoreV1().Nodes().Delete(ctx, schedNode.Name, nil)
 		if err != nil {
 			t.Errorf("Failed to delete node: %v", err)
 		}
@@ -461,6 +464,7 @@ func TestMultiScheduler(t *testing.T) {
 	*/
 
 	// 1. create and start default-scheduler
+	ctx := context.TODO()
 	context := initTest(t, "multi-scheduler")
 	defer cleanupTest(t, context)
 
@@ -474,7 +478,7 @@ func TestMultiScheduler(t *testing.T) {
 			},
 		},
 	}
-	context.clientSet.CoreV1().Nodes().Create(node)
+	context.clientSet.CoreV1().Nodes().Create(ctx, node)
 
 	// 3. create 3 pods for testing
 	t.Logf("create 3 pods for testing")
@@ -530,7 +534,7 @@ func TestMultiScheduler(t *testing.T) {
 	eventBroadcaster2 := record.NewBroadcaster()
 	schedulerConfig2.Recorder = eventBroadcaster2.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: fooScheduler})
 	eventBroadcaster2.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientSet2.CoreV1().Events("")})
-	go podInformer2.Informer().Run(schedulerConfig2.StopEverything)
+	go podInformer2.Informer(ctx).Run(schedulerConfig2.StopEverything)
 	informerFactory2.Start(schedulerConfig2.StopEverything)
 
 	sched2, _ := scheduler.NewFromConfigurator(&scheduler.FakeConfigurator{Config: schedulerConfig2}, nil...)
@@ -595,6 +599,7 @@ func TestMultiScheduler(t *testing.T) {
 
 // This test will verify scheduler can work well regardless of whether kubelet is allocatable aware or not.
 func TestAllocatable(t *testing.T) {
+	ctx := context.TODO()
 	context := initTest(t, "allocatable")
 	defer cleanupTest(t, context)
 
@@ -642,7 +647,7 @@ func TestAllocatable(t *testing.T) {
 		},
 	}
 
-	if _, err := context.clientSet.CoreV1().Nodes().UpdateStatus(allocNode); err != nil {
+	if _, err := context.clientSet.CoreV1().Nodes().UpdateStatus(ctx, allocNode); err != nil {
 		t.Fatalf("Failed to update node with Status.Allocatable: %v", err)
 	}
 
@@ -668,6 +673,7 @@ func TestAllocatable(t *testing.T) {
 // TestPDBCache verifies that scheduler cache works as expected when handling
 // PodDisruptionBudget.
 func TestPDBCache(t *testing.T) {
+	ctx := context.TODO()
 	context := initTest(t, "pdbcache")
 	defer cleanupTest(t, context)
 
@@ -685,7 +691,7 @@ func TestPDBCache(t *testing.T) {
 		},
 	}
 
-	createdPDB, err := context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Create(pdb)
+	createdPDB, err := context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Create(ctx, pdb)
 	if err != nil {
 		t.Errorf("Failed to create PDB: %v", err)
 	}
@@ -712,7 +718,7 @@ func TestPDBCache(t *testing.T) {
 	// Update PDB and change its labels.
 	pdbCopy := *cachedPDBs[0]
 	pdbCopy.Labels = map[string]string{}
-	updatedPDB, err := context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Update(&pdbCopy)
+	updatedPDB, err := context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Update(ctx, &pdbCopy)
 	if err != nil {
 		t.Errorf("Failed to update PDB: %v", err)
 	}
@@ -737,7 +743,7 @@ func TestPDBCache(t *testing.T) {
 	}
 
 	// Delete PDB.
-	err = context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Delete(pdb.Name, &metav1.DeleteOptions{})
+	err = context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Delete(ctx, pdb.Name, &metav1.DeleteOptions{})
 	if err != nil {
 		t.Errorf("Failed to delete PDB: %v", err)
 	}
@@ -758,6 +764,7 @@ func TestPDBCache(t *testing.T) {
 // pods are scheduled by other schedulers.
 func TestSchedulerInformers(t *testing.T) {
 	// Initialize scheduler.
+	ctx := context.TODO()
 	context := initTest(t, "scheduler-informer")
 	defer cleanupTest(t, context)
 	cs := context.clientSet
@@ -842,7 +849,7 @@ func TestSchedulerInformers(t *testing.T) {
 		// Cleanup
 		pods = append(pods, unschedulable)
 		cleanupPods(cs, t, pods)
-		cs.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).DeleteCollection(nil, metav1.ListOptions{})
-		cs.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
+		cs.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).DeleteCollection(ctx, nil, metav1.ListOptions{})
+		cs.CoreV1().Nodes().DeleteCollection(ctx, nil, metav1.ListOptions{})
 	}
 }
