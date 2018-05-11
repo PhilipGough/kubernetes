@@ -17,6 +17,7 @@ limitations under the License.
 package apimachinery
 
 import (
+	"context"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -40,6 +41,7 @@ const (
 
 var _ = SIGDescribe("Watchers", func() {
 	f := framework.NewDefaultFramework("watch")
+	ctx := context.TODO()
 
 	It("should observe add, update, and delete events on pods", func() {
 		c := f.ClientSet
@@ -88,7 +90,7 @@ var _ = SIGDescribe("Watchers", func() {
 				},
 			},
 		}
-		testPodA, err = c.CoreV1().Pods(ns).Create(testPodA)
+		testPodA, err = c.CoreV1().Pods(ns).Create(ctx, testPodA)
 		Expect(err).NotTo(HaveOccurred())
 		expectEvent(watchA, watch.Added, testPodA)
 		expectEvent(watchAB, watch.Added, testPodA)
@@ -110,19 +112,19 @@ var _ = SIGDescribe("Watchers", func() {
 		expectEvent(watchAB, watch.Modified, testPodA)
 		expectNoEvent(watchB, watch.Modified, testPodA)
 
-		err = c.CoreV1().Pods(ns).Delete(testPodA.GetName(), nil)
+		err = c.CoreV1().Pods(ns).Delete(ctx, testPodA.GetName(), nil)
 		Expect(err).NotTo(HaveOccurred())
 		expectEvent(watchA, watch.Deleted, nil)
 		expectEvent(watchAB, watch.Deleted, nil)
 		expectNoEvent(watchB, watch.Deleted, nil)
 
-		testPodB, err = c.CoreV1().Pods(ns).Create(testPodB)
+		testPodB, err = c.CoreV1().Pods(ns).Create(ctx, testPodB)
 		Expect(err).NotTo(HaveOccurred())
 		expectEvent(watchB, watch.Added, testPodB)
 		expectEvent(watchAB, watch.Added, testPodB)
 		expectNoEvent(watchA, watch.Added, testPodB)
 
-		err = c.CoreV1().Pods(ns).Delete(testPodB.GetName(), nil)
+		err = c.CoreV1().Pods(ns).Delete(ctx, testPodB.GetName(), nil)
 		Expect(err).NotTo(HaveOccurred())
 		expectEvent(watchB, watch.Deleted, nil)
 		expectEvent(watchAB, watch.Deleted, nil)
@@ -144,7 +146,7 @@ func watchPodsWithLabels(f *framework.Framework, labels ...string) (watch.Interf
 			},
 		}),
 	}
-	return c.CoreV1().Pods(ns).Watch(opts)
+	return c.CoreV1().Pods(ns).Watch(context.TODO(), opts)
 }
 
 func int64ptr(i int) *int64 {
@@ -157,14 +159,15 @@ type updatePodFunc func(p *v1.Pod)
 func updatePod(f *framework.Framework, name string, update updatePodFunc) (*v1.Pod, error) {
 	c := f.ClientSet
 	ns := f.Namespace.Name
+	ctx := context.TODO()
 	var p *v1.Pod
 	pollErr := wait.PollImmediate(2*time.Second, 1*time.Minute, func() (bool, error) {
 		var err error
-		if p, err = c.CoreV1().Pods(ns).Get(name, metav1.GetOptions{}); err != nil {
+		if p, err = c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		update(p)
-		if p, err = c.CoreV1().Pods(ns).Update(p); err == nil {
+		if p, err = c.CoreV1().Pods(ns).Update(ctx, p); err == nil {
 			return true, nil
 		}
 		// Only retry update on conflict

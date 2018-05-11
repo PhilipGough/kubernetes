@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -144,7 +145,7 @@ func (o *ClusterInfoDumpOptions) Complete(f cmdutil.Factory, cmd *cobra.Command)
 }
 
 func (o *ClusterInfoDumpOptions) Run() error {
-	nodes, err := o.clientset.Core().Nodes().List(metav1.ListOptions{})
+	nodes, err := o.clientset.Core().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -155,7 +156,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 
 	var namespaces []string
 	if o.AllNamespaces {
-		namespaceList, err := o.clientset.Core().Namespaces().List(metav1.ListOptions{})
+		namespaceList, err := o.clientset.Core().Namespaces().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -173,7 +174,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 	for _, namespace := range namespaces {
 		// TODO: this is repetitive in the extreme.  Use reflection or
 		// something to make this a for loop.
-		events, err := o.clientset.Core().Events(namespace).List(metav1.ListOptions{})
+		events, err := o.clientset.Core().Events(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -181,7 +182,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 			return err
 		}
 
-		rcs, err := o.clientset.Core().ReplicationControllers(namespace).List(metav1.ListOptions{})
+		rcs, err := o.clientset.Core().ReplicationControllers(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -189,7 +190,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 			return err
 		}
 
-		svcs, err := o.clientset.Core().Services(namespace).List(metav1.ListOptions{})
+		svcs, err := o.clientset.Core().Services(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -197,7 +198,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 			return err
 		}
 
-		sets, err := o.clientset.Extensions().DaemonSets(namespace).List(metav1.ListOptions{})
+		sets, err := o.clientset.Extensions().DaemonSets(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -205,7 +206,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 			return err
 		}
 
-		deps, err := o.clientset.Extensions().Deployments(namespace).List(metav1.ListOptions{})
+		deps, err := o.clientset.Extensions().Deployments(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -213,7 +214,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 			return err
 		}
 
-		rps, err := o.clientset.Extensions().ReplicaSets(namespace).List(metav1.ListOptions{})
+		rps, err := o.clientset.Extensions().ReplicaSets(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -221,7 +222,7 @@ func (o *ClusterInfoDumpOptions) Run() error {
 			return err
 		}
 
-		pods, err := o.clientset.Core().Pods(namespace).List(metav1.ListOptions{})
+		pods, err := o.clientset.Core().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return err
 		}

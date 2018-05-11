@@ -17,6 +17,7 @@ limitations under the License.
 package storage
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,7 @@ var _ = utils.SIGDescribe("Subpath", func() {
 	)
 
 	f := framework.NewDefaultFramework("subpath")
+	ctx := context.TODO()
 
 	Context("Atomic writer volumes", func() {
 		var err error
@@ -88,13 +90,13 @@ var _ = utils.SIGDescribe("Subpath", func() {
 		BeforeEach(func() {
 			By("Setting up data")
 			secret := &v1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "my-secret"}, Data: map[string][]byte{"secret-key": []byte("secret-value")}}
-			secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret)
+			secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, secret)
 			if err != nil && !apierrors.IsAlreadyExists(err) {
 				Expect(err).ToNot(HaveOccurred(), "while creating secret")
 			}
 
 			configmap := &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "my-configmap"}, Data: map[string]string{"configmap-key": "configmap-value"}}
-			configmap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configmap)
+			configmap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(ctx, configmap)
 			if err != nil && !apierrors.IsAlreadyExists(err) {
 				Expect(err).ToNot(HaveOccurred(), "while creating configmap")
 			}
@@ -474,8 +476,9 @@ func testReadFile(f *framework.Framework, file string, pod *v1.Pod, containerInd
 }
 
 func testPodFailSupath(f *framework.Framework, pod *v1.Pod) {
+	ctx := context.TODO()
 	By(fmt.Sprintf("Creating pod %s", pod.Name))
-	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(pod)
+	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(ctx, pod)
 	Expect(err).ToNot(HaveOccurred(), "while creating pod")
 	defer func() {
 		framework.DeletePodWithWait(f, f.ClientSet, pod)
@@ -491,7 +494,7 @@ func testPodFailSupath(f *framework.Framework, pod *v1.Pod) {
 		"reason":                   "Failed",
 	}.AsSelector().String()
 	options := metav1.ListOptions{FieldSelector: selector}
-	events, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).List(options)
+	events, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).List(ctx, options)
 	Expect(err).NotTo(HaveOccurred(), "while getting pod events")
 	Expect(len(events.Items)).NotTo(Equal(0), "no events found")
 	Expect(events.Items[0].Message).To(ContainSubstring("subPath"), "subpath error not found")
@@ -499,6 +502,7 @@ func testPodFailSupath(f *framework.Framework, pod *v1.Pod) {
 
 // Tests that the existing subpath mount is detected when a container restarts
 func testPodContainerRestart(f *framework.Framework, pod *v1.Pod) {
+	ctx := context.TODO()
 	pod.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 
 	pod.Spec.Containers[0].Image = "busybox"
@@ -520,7 +524,7 @@ func testPodContainerRestart(f *framework.Framework, pod *v1.Pod) {
 
 	// Start pod
 	By(fmt.Sprintf("Creating pod %s", pod.Name))
-	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(pod)
+	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(ctx, pod)
 	Expect(err).ToNot(HaveOccurred(), "while creating pod")
 
 	err = framework.WaitTimeoutForPodRunningInNamespace(f.ClientSet, pod.Name, pod.Namespace, time.Minute)
@@ -535,7 +539,7 @@ func testPodContainerRestart(f *framework.Framework, pod *v1.Pod) {
 	By("Waiting for container to restart")
 	restarts := int32(0)
 	err = wait.PollImmediate(10*time.Second, 2*time.Minute, func() (bool, error) {
-		pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(pod.Name, metav1.GetOptions{})
+		pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -565,7 +569,7 @@ func testPodContainerRestart(f *framework.Framework, pod *v1.Pod) {
 	stableCount := int(0)
 	stableThreshold := int(time.Minute / framework.Poll)
 	err = wait.PollImmediate(framework.Poll, 2*time.Minute, func() (bool, error) {
-		pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(pod.Name, metav1.GetOptions{})
+		pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -591,6 +595,7 @@ func testPodContainerRestart(f *framework.Framework, pod *v1.Pod) {
 }
 
 func testSubpathReconstruction(f *framework.Framework, pod *v1.Pod, forceDelete bool) {
+	ctx := context.TODO()
 	// This is mostly copied from TestVolumeUnmountsFromDeletedPodWithForceOption()
 
 	// Change to busybox
@@ -605,13 +610,13 @@ func testSubpathReconstruction(f *framework.Framework, pod *v1.Pod, forceDelete 
 	pod.Spec.TerminationGracePeriodSeconds = &gracePeriod
 
 	By(fmt.Sprintf("Creating pod %s", pod.Name))
-	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(pod)
+	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(ctx, pod)
 	Expect(err).ToNot(HaveOccurred(), "while creating pod")
 
 	err = framework.WaitTimeoutForPodRunningInNamespace(f.ClientSet, pod.Name, pod.Namespace, time.Minute)
 	Expect(err).ToNot(HaveOccurred(), "while waiting for pod to be running")
 
-	pod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(pod.Name, metav1.GetOptions{})
+	pod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, pod.Name, metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred(), "while getting pod")
 
 	utils.TestVolumeUnmountsFromDeletedPodWithForceOption(f.ClientSet, f, pod, forceDelete, true)
@@ -715,7 +720,7 @@ func (s *hostpathSymlinkSource) createVolume(f *framework.Framework) volInfo {
 			NodeName: node0.Name,
 		},
 	}
-	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(pod)
+	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(context.TODO(), pod)
 	Expect(err).ToNot(HaveOccurred(), "while creating hostpath init pod")
 
 	err = framework.WaitForPodSuccessInNamespace(f.ClientSet, pod.Name, pod.Namespace)
@@ -805,7 +810,7 @@ func (s *gcepdPVCSource) getReadOnlyVolumeSpec() *v1.VolumeSource {
 
 func (s *gcepdPVCSource) cleanupVolume(f *framework.Framework) {
 	if s.pvc != nil {
-		err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.Namespace.Name).Delete(s.pvc.Name, nil)
+		err := f.ClientSet.CoreV1().PersistentVolumeClaims(f.Namespace.Name).Delete(context.TODO(), s.pvc.Name, nil)
 		framework.ExpectNoError(err, "Error deleting PVC")
 	}
 }
@@ -927,7 +932,7 @@ func (s *glusterSource) getReadOnlyVolumeSpec() *v1.VolumeSource {
 func (s *glusterSource) cleanupVolume(f *framework.Framework) {
 	if s.serverPod != nil {
 		framework.DeletePodWithWait(f, f.ClientSet, s.serverPod)
-		err := f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).Delete("gluster-server", nil)
+		err := f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).Delete(context.TODO(), "gluster-server", nil)
 		Expect(err).NotTo(HaveOccurred(), "Gluster delete endpoints failed")
 	}
 }

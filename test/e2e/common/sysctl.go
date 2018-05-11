@@ -17,6 +17,8 @@ limitations under the License.
 package common
 
 import (
+	"context"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -30,6 +32,7 @@ import (
 
 var _ = framework.KubeDescribe("Sysctls", func() {
 	f := framework.NewDefaultFramework("sysctl")
+	ctx := context.TODO()
 	var podClient *framework.PodClient
 
 	testPod := func() *v1.Pod {
@@ -84,7 +87,7 @@ var _ = framework.KubeDescribe("Sysctls", func() {
 		By("Waiting for pod completion")
 		err = f.WaitForPodNoLongerRunning(pod.Name)
 		Expect(err).NotTo(HaveOccurred())
-		pod, err = podClient.Get(pod.Name, metav1.GetOptions{})
+		pod, err = podClient.Get(ctx, pod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Checking that the pod succeeded")
@@ -125,7 +128,7 @@ var _ = framework.KubeDescribe("Sysctls", func() {
 		By("Waiting for pod completion")
 		err = f.WaitForPodNoLongerRunning(pod.Name)
 		Expect(err).NotTo(HaveOccurred())
-		pod, err = podClient.Get(pod.Name, metav1.GetOptions{})
+		pod, err = podClient.Get(ctx, pod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Checking that the pod succeeded")
@@ -172,7 +175,7 @@ var _ = framework.KubeDescribe("Sysctls", func() {
 
 		By("Creating a pod with one valid and two invalid sysctls")
 		client := f.ClientSet.CoreV1().Pods(f.Namespace.Name)
-		_, err := client.Create(pod)
+		_, err := client.Create(ctx, pod)
 
 		Expect(err).NotTo(BeNil())
 		Expect(err.Error()).To(ContainSubstring(`Invalid value: "foo-"`))

@@ -17,6 +17,7 @@ limitations under the License.
 package testserver
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -156,7 +157,7 @@ func NewCurletInstance(namespace, name string) *unstructured.Unstructured {
 // the created CR. Please call CreateNewCustomResourceDefinition if you need to
 // watch the CR.
 func CreateNewCustomResourceDefinitionWatchUnsafe(crd *apiextensionsv1beta1.CustomResourceDefinition, apiExtensionsClient clientset.Interface) error {
-	_, err := apiExtensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+	_, err := apiExtensionsClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), crd)
 	if err != nil {
 		return err
 	}
@@ -278,12 +279,12 @@ func checkForWatchCachePrimed(crd *apiextensionsv1beta1.CustomResourceDefinition
 // UpdateCustomResourceDefinition updates a CRD, retrying up to 5 times on version conflict errors.
 func UpdateCustomResourceDefinition(client clientset.Interface, name string, update func(*apiextensionsv1beta1.CustomResourceDefinition)) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
 	for i := 0; i < 5; i++ {
-		crd, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(name, metav1.GetOptions{})
+		crd, err := client.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get CustomResourceDefinition %q: %v", name, err)
 		}
 		update(crd)
-		crd, err = client.ApiextensionsV1beta1().CustomResourceDefinitions().Update(crd)
+		crd, err = client.ApiextensionsV1beta1().CustomResourceDefinitions().Update(context.TODO(), crd)
 		if err == nil {
 			return crd, nil
 		}
@@ -295,7 +296,7 @@ func UpdateCustomResourceDefinition(client clientset.Interface, name string, upd
 }
 
 func DeleteCustomResourceDefinition(crd *apiextensionsv1beta1.CustomResourceDefinition, apiExtensionsClient clientset.Interface) error {
-	if err := apiExtensionsClient.Apiextensions().CustomResourceDefinitions().Delete(crd.Name, nil); err != nil {
+	if err := apiExtensionsClient.Apiextensions().CustomResourceDefinitions().Delete(context.TODO(), crd.Name, nil); err != nil {
 		return err
 	}
 	err := wait.PollImmediate(500*time.Millisecond, 30*time.Second, func() (bool, error) {
@@ -318,7 +319,7 @@ func DeleteCustomResourceDefinition(crd *apiextensionsv1beta1.CustomResourceDefi
 }
 
 func GetCustomResourceDefinition(crd *apiextensionsv1beta1.CustomResourceDefinition, apiExtensionsClient clientset.Interface) (*apiextensionsv1beta1.CustomResourceDefinition, error) {
-	return apiExtensionsClient.Apiextensions().CustomResourceDefinitions().Get(crd.Name, metav1.GetOptions{})
+	return apiExtensionsClient.Apiextensions().CustomResourceDefinitions().Get(context.TODO(), crd.Name, metav1.GetOptions{})
 }
 
 func CreateNewScaleClient(crd *apiextensionsv1beta1.CustomResourceDefinition, config *rest.Config) (scale.ScalesGetter, error) {

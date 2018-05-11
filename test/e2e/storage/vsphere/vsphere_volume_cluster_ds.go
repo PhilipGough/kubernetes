@@ -17,6 +17,8 @@ limitations under the License.
 package vsphere
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,6 +70,7 @@ var _ = utils.SIGDescribe("Volume Provisioning On Clustered Datastore [Feature:v
 
 	It("verify static provisioning on clustered datastore", func() {
 		var volumePath string
+		ctx := context.TODO()
 
 		By("creating a test vsphere volume")
 		volumeOptions := new(VolumeOptions)
@@ -86,13 +89,13 @@ var _ = utils.SIGDescribe("Volume Provisioning On Clustered Datastore [Feature:v
 		podspec := getVSpherePodSpecWithVolumePaths([]string{volumePath}, nil, nil)
 
 		By("Creating pod")
-		pod, err := client.CoreV1().Pods(namespace).Create(podspec)
+		pod, err := client.CoreV1().Pods(namespace).Create(ctx, podspec)
 		Expect(err).NotTo(HaveOccurred())
 		By("Waiting for pod to be ready")
 		Expect(framework.WaitForPodNameRunningInNamespace(client, pod.Name, namespace)).To(Succeed())
 
 		// get fresh pod info
-		pod, err = client.CoreV1().Pods(namespace).Get(pod.Name, metav1.GetOptions{})
+		pod, err = client.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		nodeName := pod.Spec.NodeName
 

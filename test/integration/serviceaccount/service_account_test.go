@@ -21,6 +21,7 @@ package serviceaccount
 // to work for any client of the HTTP interface.
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -64,6 +65,7 @@ const (
 )
 
 func TestServiceAccountAutoCreate(t *testing.T) {
+	ctx := context.TODO()
 	c, _, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -73,7 +75,7 @@ func TestServiceAccountAutoCreate(t *testing.T) {
 	ns := "test-service-account-creation"
 
 	// Create namespace
-	_, err = c.Core().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	_, err = c.Core().Namespaces().Create(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil {
 		t.Fatalf("could not create namespace: %v", err)
 	}
@@ -85,7 +87,7 @@ func TestServiceAccountAutoCreate(t *testing.T) {
 	}
 
 	// Delete service account
-	err = c.Core().ServiceAccounts(ns).Delete(defaultUser.Name, nil)
+	err = c.Core().ServiceAccounts(ns).Delete(ctx, defaultUser.Name, nil)
 	if err != nil {
 		t.Fatalf("Could not delete default serviceaccount: %v", err)
 	}
@@ -101,6 +103,7 @@ func TestServiceAccountAutoCreate(t *testing.T) {
 }
 
 func TestServiceAccountTokenAutoCreate(t *testing.T) {
+	ctx := context.TODO()
 	c, _, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -111,13 +114,13 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	name := "my-service-account"
 
 	// Create namespace
-	_, err = c.Core().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	_, err = c.Core().Namespaces().Create(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Create service account
-	serviceAccount, err := c.Core().ServiceAccounts(ns).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name}})
+	serviceAccount, err := c.Core().ServiceAccounts(ns).Create(ctx, &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: name}})
 	if err != nil {
 		t.Fatalf("Service Account not created: %v", err)
 	}
@@ -129,7 +132,7 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	}
 
 	// Delete token
-	err = c.Core().Secrets(ns).Delete(token1Name, nil)
+	err = c.Core().Secrets(ns).Delete(ctx, token1Name, nil)
 	if err != nil {
 		t.Fatalf("Could not delete token: %v", err)
 	}
@@ -147,12 +150,12 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	}
 
 	// Trigger creation of a new referenced token
-	serviceAccount, err = c.Core().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+	serviceAccount, err = c.Core().ServiceAccounts(ns).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	serviceAccount.Secrets = []v1.ObjectReference{}
-	_, err = c.Core().ServiceAccounts(ns).Update(serviceAccount)
+	_, err = c.Core().ServiceAccounts(ns).Update(ctx, serviceAccount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +173,7 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	}
 
 	// Delete service account
-	err = c.Core().ServiceAccounts(ns).Delete(name, nil)
+	err = c.Core().ServiceAccounts(ns).Delete(ctx, name, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +182,7 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 	tokensToCleanup := sets.NewString(token1Name, token2Name, token3Name)
 	err = wait.Poll(time.Second, 10*time.Second, func() (bool, error) {
 		// Get all secrets in the namespace
-		secrets, err := c.Core().Secrets(ns).List(metav1.ListOptions{})
+		secrets, err := c.Core().Secrets(ns).List(ctx, metav1.ListOptions{})
 		// Retrieval errors should fail
 		if err != nil {
 			return false, err
@@ -199,6 +202,7 @@ func TestServiceAccountTokenAutoCreate(t *testing.T) {
 }
 
 func TestServiceAccountTokenAutoMount(t *testing.T) {
+	ctx := context.TODO()
 	c, _, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -208,7 +212,7 @@ func TestServiceAccountTokenAutoMount(t *testing.T) {
 	ns := "auto-mount-ns"
 
 	// Create "my" namespace
-	_, err = c.Core().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+	_, err = c.Core().Namespaces().Create(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("could not create namespace: %v", err)
 	}
@@ -262,7 +266,7 @@ func TestServiceAccountTokenAutoMount(t *testing.T) {
 	}
 	expectedContainer2VolumeMounts := protoPod.Spec.Containers[1].VolumeMounts
 
-	createdPod, err := c.Core().Pods(ns).Create(&protoPod)
+	createdPod, err := c.Core().Pods(ns).Create(ctx, &protoPod)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,6 +285,7 @@ func TestServiceAccountTokenAutoMount(t *testing.T) {
 }
 
 func TestServiceAccountTokenAuthentication(t *testing.T) {
+	ctx := context.TODO()
 	c, config, stopFunc, err := startServiceAccountTestServer(t)
 	defer stopFunc()
 	if err != nil {
@@ -291,19 +296,19 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 	otherns := "other-ns"
 
 	// Create "my" namespace
-	_, err = c.Core().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: myns}})
+	_, err = c.Core().Namespaces().Create(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: myns}})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Create "other" namespace
-	_, err = c.Core().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: otherns}})
+	_, err = c.Core().Namespaces().Create(ctx, &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: otherns}})
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("could not create namespace: %v", err)
 	}
 
 	// Create "ro" user in myns
-	_, err = c.Core().ServiceAccounts(myns).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readOnlyServiceAccountName}})
+	_, err = c.Core().ServiceAccounts(myns).Create(ctx, &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readOnlyServiceAccountName}})
 	if err != nil {
 		t.Fatalf("Service Account not created: %v", err)
 	}
@@ -316,14 +321,14 @@ func TestServiceAccountTokenAuthentication(t *testing.T) {
 	roClient := clientset.NewForConfigOrDie(&roClientConfig)
 	doServiceAccountAPIRequests(t, roClient, myns, true, true, false)
 	doServiceAccountAPIRequests(t, roClient, otherns, true, false, false)
-	err = c.Core().Secrets(myns).Delete(roTokenName, nil)
+	err = c.Core().Secrets(myns).Delete(ctx, roTokenName, nil)
 	if err != nil {
 		t.Fatalf("could not delete token: %v", err)
 	}
 	doServiceAccountAPIRequests(t, roClient, myns, false, false, false)
 
 	// Create "rw" user in myns
-	_, err = c.Core().ServiceAccounts(myns).Create(&v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readWriteServiceAccountName}})
+	_, err = c.Core().ServiceAccounts(myns).Create(ctx, &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: readWriteServiceAccountName}})
 	if err != nil {
 		t.Fatalf("Service Account not created: %v", err)
 	}
@@ -468,13 +473,13 @@ func startServiceAccountTestServer(t *testing.T) (*clientset.Clientset, restclie
 
 func getServiceAccount(c *clientset.Clientset, ns string, name string, shouldWait bool) (*v1.ServiceAccount, error) {
 	if !shouldWait {
-		return c.Core().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+		return c.Core().ServiceAccounts(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	}
 
 	var user *v1.ServiceAccount
 	var err error
 	err = wait.Poll(time.Second, 10*time.Second, func() (bool, error) {
-		user, err = c.Core().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+		user, err = c.Core().ServiceAccounts(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -489,9 +494,10 @@ func getServiceAccount(c *clientset.Clientset, ns string, name string, shouldWai
 func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name string, shouldWait bool) (string, string, error) {
 	tokenName := ""
 	token := ""
+	ctx := context.TODO()
 
 	findToken := func() (bool, error) {
-		user, err := c.Core().ServiceAccounts(ns).Get(name, metav1.GetOptions{})
+		user, err := c.Core().ServiceAccounts(ns).Get(ctx, name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -500,7 +506,7 @@ func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name st
 		}
 
 		for _, ref := range user.Secrets {
-			secret, err := c.Core().Secrets(ns).Get(ref.Name, metav1.GetOptions{})
+			secret, err := c.Core().Secrets(ns).Get(ctx, ref.Name, metav1.GetOptions{})
 			if errors.IsNotFound(err) {
 				continue
 			}
@@ -543,6 +549,7 @@ func getReferencedServiceAccountToken(c *clientset.Clientset, ns string, name st
 type testOperation func() error
 
 func doServiceAccountAPIRequests(t *testing.T, c *clientset.Clientset, ns string, authenticated bool, canRead bool, canWrite bool) {
+	ctx := context.TODO()
 	testSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: "testSecret"},
 		Data:       map[string][]byte{"test": []byte("data")},
@@ -550,17 +557,17 @@ func doServiceAccountAPIRequests(t *testing.T, c *clientset.Clientset, ns string
 
 	readOps := []testOperation{
 		func() error {
-			_, err := c.Core().Secrets(ns).List(metav1.ListOptions{})
+			_, err := c.Core().Secrets(ns).List(ctx, metav1.ListOptions{})
 			return err
 		},
 		func() error {
-			_, err := c.Core().Pods(ns).List(metav1.ListOptions{})
+			_, err := c.Core().Pods(ns).List(ctx, metav1.ListOptions{})
 			return err
 		},
 	}
 	writeOps := []testOperation{
-		func() error { _, err := c.Core().Secrets(ns).Create(testSecret); return err },
-		func() error { return c.Core().Secrets(ns).Delete(testSecret.Name, nil) },
+		func() error { _, err := c.Core().Secrets(ns).Create(ctx, testSecret); return err },
+		func() error { return c.Core().Secrets(ns).Delete(ctx, testSecret.Name, nil) },
 	}
 
 	for _, op := range readOps {

@@ -103,6 +103,7 @@ func Query(c clientset.Interface, query string) (*influxdb.Response, error) {
 
 func verifyExpectedRcsExistAndGetExpectedPods(c clientset.Interface) ([]string, error) {
 	expectedPods := []string{}
+	ctx := context.TODO()
 	// Iterate over the labels that identify the replication controllers that we
 	// want to check. The rcLabels contains the value values for the k8s-app key
 	// that identify the replication controllers that we want to check. Using a label
@@ -114,15 +115,15 @@ func verifyExpectedRcsExistAndGetExpectedPods(c clientset.Interface) ([]string, 
 	for _, rcLabel := range rcLabels {
 		selector := labels.Set{"k8s-app": rcLabel}.AsSelector()
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		deploymentList, err := c.ExtensionsV1beta1().Deployments(metav1.NamespaceSystem).List(options)
+		deploymentList, err := c.ExtensionsV1beta1().Deployments(metav1.NamespaceSystem).List(ctx, options)
 		if err != nil {
 			return nil, err
 		}
-		rcList, err := c.CoreV1().ReplicationControllers(metav1.NamespaceSystem).List(options)
+		rcList, err := c.CoreV1().ReplicationControllers(metav1.NamespaceSystem).List(ctx, options)
 		if err != nil {
 			return nil, err
 		}
-		psList, err := c.AppsV1().StatefulSets(metav1.NamespaceSystem).List(options)
+		psList, err := c.AppsV1().StatefulSets(metav1.NamespaceSystem).List(ctx, options)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +135,7 @@ func verifyExpectedRcsExistAndGetExpectedPods(c clientset.Interface) ([]string, 
 		for _, rc := range rcList.Items {
 			selector := labels.Set(rc.Spec.Selector).AsSelector()
 			options := metav1.ListOptions{LabelSelector: selector.String()}
-			podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(options)
+			podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(ctx, options)
 			if err != nil {
 				return nil, err
 			}
@@ -149,7 +150,7 @@ func verifyExpectedRcsExistAndGetExpectedPods(c clientset.Interface) ([]string, 
 		for _, rc := range deploymentList.Items {
 			selector := labels.Set(rc.Spec.Selector.MatchLabels).AsSelector()
 			options := metav1.ListOptions{LabelSelector: selector.String()}
-			podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(options)
+			podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(ctx, options)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +165,7 @@ func verifyExpectedRcsExistAndGetExpectedPods(c clientset.Interface) ([]string, 
 		for _, ps := range psList.Items {
 			selector := labels.Set(ps.Spec.Selector.MatchLabels).AsSelector()
 			options := metav1.ListOptions{LabelSelector: selector.String()}
-			podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(options)
+			podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(ctx, options)
 			if err != nil {
 				return nil, err
 			}
@@ -180,7 +181,7 @@ func verifyExpectedRcsExistAndGetExpectedPods(c clientset.Interface) ([]string, 
 }
 
 func expectedServicesExist(c clientset.Interface) error {
-	serviceList, err := c.CoreV1().Services(metav1.NamespaceSystem).List(metav1.ListOptions{})
+	serviceList, err := c.CoreV1().Services(metav1.NamespaceSystem).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -199,7 +200,7 @@ func expectedServicesExist(c clientset.Interface) error {
 
 func getAllNodesInCluster(c clientset.Interface) ([]string, error) {
 	// It should be OK to list unschedulable Nodes here.
-	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +312,7 @@ func testMonitoringUsingHeapsterInfluxdb(c clientset.Interface) {
 func printDebugInfo(c clientset.Interface) {
 	set := labels.Set{"k8s-app": "heapster"}
 	options := metav1.ListOptions{LabelSelector: set.AsSelector().String()}
-	podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(options)
+	podList, err := c.CoreV1().Pods(metav1.NamespaceSystem).List(context.TODO(), options)
 	if err != nil {
 		framework.Logf("Error while listing pods %v", err)
 		return

@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -116,6 +117,7 @@ func stopNfsServer(serverPod *v1.Pod) {
 // will execute the passed in shell cmd. Waits for the pod to start.
 // Note: the nfs plugin is defined inline, no PV or PVC.
 func createPodUsingNfs(f *framework.Framework, c clientset.Interface, ns, nfsIP, cmd string) *v1.Pod {
+	ctx := context.TODO()
 	By("create pod using nfs volume")
 
 	isPrivileged := true
@@ -162,13 +164,13 @@ func createPodUsingNfs(f *framework.Framework, c clientset.Interface, ns, nfsIP,
 			},
 		},
 	}
-	rtnPod, err := c.CoreV1().Pods(ns).Create(pod)
+	rtnPod, err := c.CoreV1().Pods(ns).Create(ctx, pod)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = f.WaitForPodReady(rtnPod.Name) // running & ready
 	Expect(err).NotTo(HaveOccurred())
 
-	rtnPod, err = c.CoreV1().Pods(ns).Get(rtnPod.Name, metav1.GetOptions{}) // return fresh pod
+	rtnPod, err = c.CoreV1().Pods(ns).Get(ctx, rtnPod.Name, metav1.GetOptions{}) // return fresh pod
 	Expect(err).NotTo(HaveOccurred())
 	return rtnPod
 }

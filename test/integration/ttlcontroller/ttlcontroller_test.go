@@ -17,6 +17,7 @@ limitations under the License.
 package ttlcontroller
 
 import (
+	"context"
 	"fmt"
 	"net/http/httptest"
 	"strconv"
@@ -59,7 +60,7 @@ func createNodes(t *testing.T, client *clientset.Clientset, startIndex, endIndex
 					Name: fmt.Sprintf("node-%d", idx),
 				},
 			}
-			if _, err := client.Core().Nodes().Create(node); err != nil {
+			if _, err := client.Core().Nodes().Create(context.TODO(), node); err != nil {
 				t.Fatalf("Failed to create node: %v", err)
 			}
 		}(i)
@@ -74,7 +75,7 @@ func deleteNodes(t *testing.T, client *clientset.Clientset, startIndex, endIndex
 		go func(idx int) {
 			defer wg.Done()
 			name := fmt.Sprintf("node-%d", idx)
-			if err := client.Core().Nodes().Delete(name, &metav1.DeleteOptions{}); err != nil {
+			if err := client.Core().Nodes().Delete(context.TODO(), name, &metav1.DeleteOptions{}); err != nil {
 				t.Fatalf("Failed to create node: %v", err)
 			}
 		}(i)
@@ -109,6 +110,7 @@ func waitForNodesWithTTLAnnotation(t *testing.T, nodeLister listers.NodeLister, 
 
 // Test whether ttlcontroller sets correct ttl annotations.
 func TestTTLAnnotations(t *testing.T) {
+	ctx := context.TODO()
 	_, server, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
@@ -118,22 +120,22 @@ func TestTTLAnnotations(t *testing.T) {
 
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	go nodeInformer.Informer().Run(stopCh)
+	go nodeInformer.Informer(ctx).Run(stopCh)
 	go ttlc.Run(1, stopCh)
 
 	// Create 100 nodes all should have annotation equal to 0.
 	createNodes(t, testClient, 0, 100)
-	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(), 100, 0)
+	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(ctx), 100, 0)
 
 	// Create 1 more node, all annotation should change to 15.
 	createNodes(t, testClient, 100, 101)
-	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(), 101, 15)
+	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(ctx), 101, 15)
 
 	// Delete 11 nodes, it should still remain at the level of 15.
 	deleteNodes(t, testClient, 90, 101)
-	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(), 90, 15)
+	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(ctx), 90, 15)
 
 	// Delete 1 more node, all should be decreased to 0.
 	deleteNodes(t, testClient, 89, 90)
-	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(), 89, 0)
+	waitForNodesWithTTLAnnotation(t, informers.Core().V1().Nodes().Lister(ctx), 89, 0)
 }

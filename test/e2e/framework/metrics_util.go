@@ -443,7 +443,7 @@ func getSchedulingLatency(c clientset.Interface) (*SchedulingLatency, error) {
 	result := SchedulingLatency{}
 
 	// Check if master Node is registered
-	nodes, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	ExpectNoError(err)
 
 	var data string

@@ -17,6 +17,10 @@ limitations under the License.
 package storage
 
 import (
+	"context"
+	"fmt"
+	"strconv"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,9 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
 	imageutils "k8s.io/kubernetes/test/utils/image"
-
-	"fmt"
-	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -54,6 +55,7 @@ const (
 )
 
 var _ = utils.SIGDescribe("EmptyDir wrapper volumes", func() {
+	ctx := context.TODO()
 	f := framework.NewDefaultFramework("emptydir-wrapper")
 
 	It("should not conflict", func() {
@@ -72,7 +74,7 @@ var _ = utils.SIGDescribe("EmptyDir wrapper volumes", func() {
 		}
 
 		var err error
-		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret); err != nil {
+		if secret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(ctx, secret); err != nil {
 			framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 		}
 
@@ -128,11 +130,11 @@ var _ = utils.SIGDescribe("EmptyDir wrapper volumes", func() {
 
 		defer func() {
 			By("Cleaning up the secret")
-			if err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(secret.Name, nil); err != nil {
+			if err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(ctx, secret.Name, nil); err != nil {
 				framework.Failf("unable to delete secret %v: %v", secret.Name, err)
 			}
 			By("Cleaning up the git vol pod")
-			if err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(pod.Name, metav1.NewDeleteOptions(0)); err != nil {
+			if err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(ctx, pod.Name, metav1.NewDeleteOptions(0)); err != nil {
 				framework.Failf("unable to delete git vol pod %v: %v", pod.Name, err)
 			}
 		}()
@@ -176,6 +178,7 @@ var _ = utils.SIGDescribe("EmptyDir wrapper volumes", func() {
 
 func createGitServer(f *framework.Framework) (gitURL string, gitRepo string, cleanup func()) {
 	var err error
+	ctx := context.TODO()
 	gitServerPodName := "git-server-" + string(uuid.NewUUID())
 	containerPort := 8000
 
@@ -220,17 +223,17 @@ func createGitServer(f *framework.Framework) (gitURL string, gitRepo string, cle
 		},
 	}
 
-	if gitServerSvc, err = f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(gitServerSvc); err != nil {
+	if gitServerSvc, err = f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(ctx, gitServerSvc); err != nil {
 		framework.Failf("unable to create test git server service %s: %v", gitServerSvc.Name, err)
 	}
 
 	return "http://" + gitServerSvc.Spec.ClusterIP + ":" + strconv.Itoa(httpPort), "test", func() {
 		By("Cleaning up the git server pod")
-		if err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(gitServerPod.Name, metav1.NewDeleteOptions(0)); err != nil {
+		if err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(ctx, gitServerPod.Name, metav1.NewDeleteOptions(0)); err != nil {
 			framework.Failf("unable to delete git server pod %v: %v", gitServerPod.Name, err)
 		}
 		By("Cleaning up the git server svc")
-		if err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(gitServerSvc.Name, nil); err != nil {
+		if err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(ctx, gitServerSvc.Name, nil); err != nil {
 			framework.Failf("unable to delete git server svc %v: %v", gitServerSvc.Name, err)
 		}
 	}
@@ -270,7 +273,7 @@ func createConfigmapsForRace(f *framework.Framework) (configMapNames []string) {
 				"data-1": "value-1",
 			},
 		}
-		_, err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap)
+		_, err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), configMap)
 		framework.ExpectNoError(err)
 	}
 	return
@@ -279,7 +282,7 @@ func createConfigmapsForRace(f *framework.Framework) (configMapNames []string) {
 func deleteConfigMaps(f *framework.Framework, configMapNames []string) {
 	By("Cleaning up the configMaps")
 	for _, configMapName := range configMapNames {
-		err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(configMapName, nil)
+		err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(context.TODO(), configMapName, nil)
 		Expect(err).NotTo(HaveOccurred(), "unable to delete configMap %v", configMapName)
 	}
 }
@@ -370,7 +373,7 @@ func testNoWrappedVolumeRace(f *framework.Framework, volumes []v1.Volume, volume
 			},
 		},
 	}
-	_, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(rc)
+	_, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(context.TODO(), rc)
 	Expect(err).NotTo(HaveOccurred(), "error creating replication controller")
 
 	defer func() {

@@ -19,6 +19,7 @@ limitations under the License.
 package e2e_node
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -475,6 +476,7 @@ func getPodStartLatency(node string) (framework.KubeletLatencyMetrics, error) {
 // newInformerWatchPod creates an informer to check whether all pods are running.
 func newInformerWatchPod(f *framework.Framework, mutex *sync.Mutex, watchTimes map[string]metav1.Time, podType string) cache.Controller {
 	ns := f.Namespace.Name
+	ctx := context.TODO()
 	checkPodRunning := func(p *v1.Pod) {
 		mutex.Lock()
 		defer mutex.Unlock()
@@ -491,12 +493,12 @@ func newInformerWatchPod(f *framework.Framework, mutex *sync.Mutex, watchTimes m
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				options.LabelSelector = labels.SelectorFromSet(labels.Set{"type": podType}).String()
-				obj, err := f.ClientSet.CoreV1().Pods(ns).List(options)
+				obj, err := f.ClientSet.CoreV1().Pods(ns).List(ctx, options)
 				return runtime.Object(obj), err
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				options.LabelSelector = labels.SelectorFromSet(labels.Set{"type": podType}).String()
-				return f.ClientSet.CoreV1().Pods(ns).Watch(options)
+				return f.ClientSet.CoreV1().Pods(ns).Watch(ctx, options)
 			},
 		},
 		&v1.Pod{},

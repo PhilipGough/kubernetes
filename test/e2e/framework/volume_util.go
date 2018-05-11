@@ -40,6 +40,7 @@ limitations under the License.
 package framework
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -163,7 +164,7 @@ func NewGlusterfsServer(cs clientset.Interface, namespace string) (config Volume
 			},
 		},
 	}
-	endpoints, err := cs.CoreV1().Endpoints(namespace).Create(endpoints)
+	endpoints, err := cs.CoreV1().Endpoints(namespace).Create(context.TODO(), endpoints)
 	Expect(err).NotTo(HaveOccurred(), "failed to create endpoints for Gluster server")
 
 	return config, pod, ip
@@ -228,6 +229,8 @@ func StartVolumeServer(client clientset.Interface, config VolumeTestConfig) *v1.
 
 	portCount := len(config.ServerPorts)
 	serverPodPorts := make([]v1.ContainerPort, portCount)
+
+	ctx := context.TODO()
 
 	for i := 0; i < portCount; i++ {
 		portName := fmt.Sprintf("%s-%d", config.Prefix, i)
@@ -305,13 +308,13 @@ func StartVolumeServer(client clientset.Interface, config VolumeTestConfig) *v1.
 	}
 
 	var pod *v1.Pod
-	serverPod, err := podClient.Create(serverPod)
+	serverPod, err := podClient.Create(ctx, serverPod)
 	// ok if the server pod already exists. TODO: make this controllable by callers
 	if err != nil {
 		if apierrs.IsAlreadyExists(err) {
 			Logf("Ignore \"already-exists\" error, re-get pod...")
 			By(fmt.Sprintf("re-getting the %q server pod", serverPodName))
-			serverPod, err = podClient.Get(serverPodName, metav1.GetOptions{})
+			serverPod, err = podClient.Get(ctx, serverPodName, metav1.GetOptions{})
 			ExpectNoError(err, "Cannot re-get the server pod %q: %v", serverPodName, err)
 			pod = serverPod
 		} else {
@@ -320,12 +323,12 @@ func StartVolumeServer(client clientset.Interface, config VolumeTestConfig) *v1.
 	}
 	if config.WaitForCompletion {
 		ExpectNoError(WaitForPodSuccessInNamespace(client, serverPod.Name, serverPod.Namespace))
-		ExpectNoError(podClient.Delete(serverPod.Name, nil))
+		ExpectNoError(podClient.Delete(ctx, serverPod.Name, nil))
 	} else {
 		ExpectNoError(WaitForPodRunningInNamespace(client, serverPod))
 		if pod == nil {
 			By(fmt.Sprintf("locating the %q server pod", serverPodName))
-			pod, err = podClient.Get(serverPodName, metav1.GetOptions{})
+			pod, err = podClient.Get(ctx, serverPodName, metav1.GetOptions{})
 			ExpectNoError(err, "Cannot locate the server pod %q: %v", serverPodName, err)
 		}
 	}
@@ -340,8 +343,8 @@ func VolumeTestCleanup(f *Framework, config VolumeTestConfig) {
 
 	client := f.ClientSet
 	podClient := client.CoreV1().Pods(config.Namespace)
-
-	err := podClient.Delete(config.Prefix+"-client", nil)
+	ctx := context.TODO()
+	err := podClient.Delete(ctx, config.Prefix+"-client", nil)
 	if err != nil {
 		// Log the error before failing test: if the test has already failed,
 		// framework.ExpectNoError() won't print anything to logs!
@@ -358,7 +361,7 @@ func VolumeTestCleanup(f *Framework, config VolumeTestConfig) {
 		By("sleeping a bit so kubelet can unmount and detach the volume")
 		time.Sleep(PodCleanupTimeout)
 
-		err = podClient.Delete(config.Prefix+"-server", nil)
+		err = podClient.Delete(ctx, config.Prefix+"-server", nil)
 		if err != nil {
 			glog.Warningf("Failed to delete server pod: %v", err)
 			ExpectNoError(err, "Failed to delete server pod: %v", err)
@@ -429,7 +432,7 @@ func TestVolumeClient(client clientset.Interface, config VolumeTestConfig, fsGro
 			VolumeSource: test.Volume,
 		})
 	}
-	clientPod, err := podsNamespacer.Create(clientPod)
+	clientPod, err := podsNamespacer.Create(context.TODO(), clientPod)
 	if err != nil {
 		Failf("Failed to create %s pod: %v", clientPod.Name, err)
 	}
@@ -455,6 +458,7 @@ func TestVolumeClient(client clientset.Interface, config VolumeTestConfig, fsGro
 func InjectHtml(client clientset.Interface, config VolumeTestConfig, volume v1.VolumeSource, content string) {
 	By(fmt.Sprint("starting ", config.Prefix, " injector"))
 	podClient := client.CoreV1().Pods(config.Namespace)
+	ctx := context.TODO()
 
 	injectPod := &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -499,10 +503,10 @@ func InjectHtml(client clientset.Interface, config VolumeTestConfig, volume v1.V
 	}
 
 	defer func() {
-		podClient.Delete(config.Prefix+"-injector", nil)
+		podClient.Delete(ctx, config.Prefix+"-injector", nil)
 	}()
 
-	injectPod, err := podClient.Create(injectPod)
+	injectPod, err := podClient.Create(ctx, injectPod)
 	ExpectNoError(err, "Failed to create injector pod: %v", err)
 	err = WaitForPodSuccessInNamespace(client, injectPod.Name, injectPod.Namespace)
 	Expect(err).NotTo(HaveOccurred())

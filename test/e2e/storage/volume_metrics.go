@@ -17,6 +17,7 @@ limitations under the License.
 package storage
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -44,6 +45,7 @@ var _ = utils.SIGDescribe("[Serial] Volume metrics", func() {
 		metricsGrabber *metrics.MetricsGrabber
 	)
 	f := framework.NewDefaultFramework("pv")
+	ctx := context.TODO()
 
 	BeforeEach(func() {
 		c = f.ClientSet
@@ -83,14 +85,14 @@ var _ = utils.SIGDescribe("[Serial] Volume metrics", func() {
 
 		storageOpMetrics := getControllerStorageMetrics(controllerMetrics)
 
-		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pvc).ToNot(Equal(nil))
 
 		claims := []*v1.PersistentVolumeClaim{pvc}
 
 		pod := framework.MakePod(ns, nil, claims, false, "")
-		pod, err = c.CoreV1().Pods(ns).Create(pod)
+		pod, err = c.CoreV1().Pods(ns).Create(ctx, pod)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = framework.WaitForPodRunningInNamespace(c, pod)
@@ -112,19 +114,19 @@ var _ = utils.SIGDescribe("[Serial] Volume metrics", func() {
 
 	It("should create volume metrics with the correct PVC ref", func() {
 		var err error
-		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(pvc)
+		pvc, err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pvc).ToNot(Equal(nil))
 
 		claims := []*v1.PersistentVolumeClaim{pvc}
 		pod := framework.MakePod(ns, nil, claims, false, "")
-		pod, err = c.CoreV1().Pods(ns).Create(pod)
+		pod, err = c.CoreV1().Pods(ns).Create(ctx, pod)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = framework.WaitForPodRunningInNamespace(c, pod)
 		framework.ExpectNoError(framework.WaitForPodRunningInNamespace(c, pod), "Error starting pod ", pod.Name)
 
-		pod, err = c.CoreV1().Pods(ns).Get(pod.Name, metav1.GetOptions{})
+		pod, err = c.CoreV1().Pods(ns).Get(ctx, pod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		// Verify volume stat metrics were collected for the referenced PVC

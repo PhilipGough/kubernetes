@@ -43,6 +43,7 @@ limitations under the License.
 package storage
 
 import (
+	"context"
 	"os/exec"
 	"strings"
 	"time"
@@ -84,6 +85,7 @@ func DeleteCinderVolume(name string) error {
 // These tests need privileged containers, which are disabled by default.
 var _ = utils.SIGDescribe("Volumes", func() {
 	f := framework.NewDefaultFramework("volume")
+	ctx := context.TODO()
 
 	// note that namespace deletion is handled by delete-namespace flag
 	// filled inside BeforeEach
@@ -136,7 +138,7 @@ var _ = utils.SIGDescribe("Volumes", func() {
 			name := config.Prefix + "-server"
 			defer func() {
 				framework.VolumeTestCleanup(f, config)
-				err := cs.CoreV1().Endpoints(namespace.Name).Delete(name, nil)
+				err := cs.CoreV1().Endpoints(namespace.Name).Delete(ctx, name, nil)
 				Expect(err).NotTo(HaveOccurred(), "defer: Gluster delete endpoints failed")
 			}()
 
@@ -222,10 +224,10 @@ var _ = utils.SIGDescribe("Volumes", func() {
 			secClient := cs.CoreV1().Secrets(config.Namespace)
 
 			defer func() {
-				secClient.Delete(config.Prefix+"-secret", nil)
+				secClient.Delete(ctx, config.Prefix+"-secret", nil)
 			}()
 
-			if _, err := secClient.Create(&secret); err != nil {
+			if _, err := secClient.Create(ctx, &secret); err != nil {
 				framework.Failf("Failed to create secrets for Ceph RBD: %v", err)
 			}
 
@@ -287,13 +289,13 @@ var _ = utils.SIGDescribe("Volumes", func() {
 			}
 
 			defer func() {
-				if err := cs.CoreV1().Secrets(namespace.Name).Delete(secret.Name, nil); err != nil {
+				if err := cs.CoreV1().Secrets(namespace.Name).Delete(ctx, secret.Name, nil); err != nil {
 					framework.Failf("unable to delete secret %v: %v", secret.Name, err)
 				}
 			}()
 
 			var err error
-			if secret, err = cs.CoreV1().Secrets(namespace.Name).Create(secret); err != nil {
+			if secret, err = cs.CoreV1().Secrets(namespace.Name).Create(ctx, secret); err != nil {
 				framework.Failf("unable to create test secret %s: %v", secret.Name, err)
 			}
 
@@ -448,11 +450,11 @@ var _ = utils.SIGDescribe("Volumes", func() {
 					"third":  "this is the third file",
 				},
 			}
-			if _, err := cs.CoreV1().ConfigMaps(namespace.Name).Create(configMap); err != nil {
+			if _, err := cs.CoreV1().ConfigMaps(namespace.Name).Create(ctx, configMap); err != nil {
 				framework.Failf("unable to create test configmap: %v", err)
 			}
 			defer func() {
-				_ = cs.CoreV1().ConfigMaps(namespace.Name).Delete(configMap.Name, nil)
+				_ = cs.CoreV1().ConfigMaps(namespace.Name).Delete(ctx, configMap.Name, nil)
 			}()
 
 			// Test one ConfigMap mounted several times to test #28502
@@ -600,7 +602,7 @@ func testGCEPD(f *framework.Framework, config framework.VolumeTestConfig, cs cli
 	defer func() {
 		// - Get NodeName from the pod spec to which the volume is mounted.
 		// - Force detach and delete.
-		pod, err := f.PodClient().Get(config.Prefix+"-client", metav1.GetOptions{})
+		pod, err := f.PodClient().Get(context.TODO(), config.Prefix+"-client", metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed getting pod %q.", config.Prefix+"-client")
 		detachAndDeletePDs(volumeName, []types.NodeName{types.NodeName(pod.Spec.NodeName)})
 	}()

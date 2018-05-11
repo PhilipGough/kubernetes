@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -95,6 +96,7 @@ func newRC(rsName string, replicas int32, rcPodLabels map[string]string, imageNa
 func TestReplicationControllerServeImageOrFail(f *framework.Framework, test string, image string) {
 	name := "my-hostname-" + test + "-" + string(uuid.NewUUID())
 	replicas := int32(1)
+	ctx := context.TODO()
 
 	// Create a replication controller for a service
 	// that serves its hostname.
@@ -103,7 +105,7 @@ func TestReplicationControllerServeImageOrFail(f *framework.Framework, test stri
 	By(fmt.Sprintf("Creating replication controller %s", name))
 	newRC := newRC(name, replicas, map[string]string{"name": name}, name, image)
 	newRC.Spec.Template.Spec.Containers[0].Ports = []v1.ContainerPort{{ContainerPort: 9376}}
-	_, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(newRC)
+	_, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(ctx, newRC)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Check that pods for the new RC were created.
@@ -121,7 +123,7 @@ func TestReplicationControllerServeImageOrFail(f *framework.Framework, test stri
 		}
 		err = f.WaitForPodRunning(pod.Name)
 		if err != nil {
-			updatePod, getErr := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(pod.Name, metav1.GetOptions{})
+			updatePod, getErr := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, pod.Name, metav1.GetOptions{})
 			if getErr == nil {
 				err = fmt.Errorf("Pod %q never run (phase: %s, conditions: %+v): %v", updatePod.Name, updatePod.Status.Phase, updatePod.Status.Conditions, err)
 			} else {
@@ -157,14 +159,15 @@ func testReplicationControllerConditionCheck(f *framework.Framework) {
 	c := f.ClientSet
 	namespace := f.Namespace.Name
 	name := "condition-test"
+	ctx := context.TODO()
 
 	framework.Logf("Creating quota %q that allows only two pods to run in the current namespace", name)
 	quota := newPodQuota(name, "2")
-	_, err := c.CoreV1().ResourceQuotas(namespace).Create(quota)
+	_, err := c.CoreV1().ResourceQuotas(namespace).Create(ctx, quota)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		quota, err = c.CoreV1().ResourceQuotas(namespace).Get(name, metav1.GetOptions{})
+		quota, err = c.CoreV1().ResourceQuotas(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -179,14 +182,14 @@ func testReplicationControllerConditionCheck(f *framework.Framework) {
 
 	By(fmt.Sprintf("Creating rc %q that asks for more than the allowed pod quota", name))
 	rc := newRC(name, 3, map[string]string{"name": name}, NginxImageName, NginxImage)
-	rc, err = c.CoreV1().ReplicationControllers(namespace).Create(rc)
+	rc, err = c.CoreV1().ReplicationControllers(namespace).Create(ctx, rc)
 	Expect(err).NotTo(HaveOccurred())
 
 	By(fmt.Sprintf("Checking rc %q has the desired failure condition set", name))
 	generation := rc.Generation
 	conditions := rc.Status.Conditions
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		rc, err = c.CoreV1().ReplicationControllers(namespace).Get(name, metav1.GetOptions{})
+		rc, err = c.CoreV1().ReplicationControllers(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -215,7 +218,7 @@ func testReplicationControllerConditionCheck(f *framework.Framework) {
 	generation = rc.Generation
 	conditions = rc.Status.Conditions
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		rc, err = c.CoreV1().ReplicationControllers(namespace).Get(name, metav1.GetOptions{})
+		rc, err = c.CoreV1().ReplicationControllers(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -236,6 +239,7 @@ func testReplicationControllerConditionCheck(f *framework.Framework) {
 
 func testRCAdoptMatchingOrphans(f *framework.Framework) {
 	name := "pod-adoption"
+	ctx := context.TODO()
 	By(fmt.Sprintf("Given a Pod with a 'name' label %s is created", name))
 	p := f.PodClient().CreateSync(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -258,12 +262,12 @@ func testRCAdoptMatchingOrphans(f *framework.Framework) {
 	replicas := int32(1)
 	rcSt := newRC(name, replicas, map[string]string{"name": name}, name, NginxImageName)
 	rcSt.Spec.Selector = map[string]string{"name": name}
-	rc, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(rcSt)
+	rc, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(ctx, rcSt)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Then the orphan pod is adopted")
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		p2, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(p.Name, metav1.GetOptions{})
+		p2, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, p.Name, metav1.GetOptions{})
 		// The Pod p should either be adopted or deleted by the RC
 		if errors.IsNotFound(err) {
 			return true, nil
@@ -283,11 +287,12 @@ func testRCAdoptMatchingOrphans(f *framework.Framework) {
 
 func testRCReleaseControlledNotMatching(f *framework.Framework) {
 	name := "pod-release"
+	ctx := context.TODO()
 	By("Given a ReplicationController is created")
 	replicas := int32(1)
 	rcSt := newRC(name, replicas, map[string]string{"name": name}, name, NginxImageName)
 	rcSt.Spec.Selector = map[string]string{"name": name}
-	rc, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(rcSt)
+	rc, err := f.ClientSet.CoreV1().ReplicationControllers(f.Namespace.Name).Create(ctx, rcSt)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("When the matched label of one of its pods change")
@@ -296,11 +301,11 @@ func testRCReleaseControlledNotMatching(f *framework.Framework) {
 
 	p := pods.Items[0]
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(p.Name, metav1.GetOptions{})
+		pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, p.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		pod.Labels = map[string]string{"name": "not-matching-name"}
-		_, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Update(pod)
+		_, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Update(ctx, pod)
 		if err != nil && errors.IsConflict(err) {
 			return false, nil
 		}
@@ -313,7 +318,7 @@ func testRCReleaseControlledNotMatching(f *framework.Framework) {
 
 	By("Then the pod is released")
 	err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		p2, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(p.Name, metav1.GetOptions{})
+		p2, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, p.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		for _, owner := range p2.OwnerReferences {
 			if *owner.Controller && owner.UID == rc.UID {

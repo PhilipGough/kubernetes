@@ -17,6 +17,7 @@ limitations under the License.
 package auth
 
 import (
+	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -34,6 +35,7 @@ import (
 
 var _ = SIGDescribe("Certificates API", func() {
 	f := framework.NewDefaultFramework("certificates")
+	ctx := context.TODO()
 
 	It("should support building a client with a CSR", func() {
 		const commonName = "tester-csr"
@@ -66,7 +68,7 @@ var _ = SIGDescribe("Certificates API", func() {
 		csrs := f.ClientSet.CertificatesV1beta1().CertificateSigningRequests()
 
 		framework.Logf("creating CSR")
-		csr, err = csrs.Create(csr)
+		csr, err = csrs.Create(ctx, csr)
 		framework.ExpectNoError(err)
 
 		csrName := csr.Name
@@ -82,7 +84,7 @@ var _ = SIGDescribe("Certificates API", func() {
 			}
 			csr, err = csrs.UpdateApproval(csr)
 			if err != nil {
-				csr, _ = csrs.Get(csrName, metav1.GetOptions{})
+				csr, _ = csrs.Get(ctx, csrName, metav1.GetOptions{})
 				framework.Logf("err updating approval: %v", err)
 				return false, nil
 			}
@@ -91,7 +93,7 @@ var _ = SIGDescribe("Certificates API", func() {
 
 		framework.Logf("waiting for CSR to be signed")
 		framework.ExpectNoError(wait.Poll(5*time.Second, time.Minute, func() (bool, error) {
-			csr, _ = csrs.Get(csrName, metav1.GetOptions{})
+			csr, _ = csrs.Get(ctx, csrName, metav1.GetOptions{})
 			if err != nil {
 				return false, err
 			}
@@ -116,6 +118,6 @@ var _ = SIGDescribe("Certificates API", func() {
 
 		newClient, err := v1beta1client.NewForConfig(rcfg)
 		framework.ExpectNoError(err)
-		framework.ExpectNoError(newClient.CertificateSigningRequests().Delete(csrName, nil))
+		framework.ExpectNoError(newClient.CertificateSigningRequests().Delete(ctx, csrName, nil))
 	})
 })

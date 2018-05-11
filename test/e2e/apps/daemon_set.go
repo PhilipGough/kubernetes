@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -62,10 +63,11 @@ const (
 // See http://issues.k8s.io/21767 for more details
 var _ = SIGDescribe("Daemon set [Serial]", func() {
 	var f *framework.Framework
+	ctx := context.TODO()
 
 	AfterEach(func() {
 		// Clean up
-		daemonsets, err := f.ClientSet.AppsV1().DaemonSets(f.Namespace.Name).List(metav1.ListOptions{})
+		daemonsets, err := f.ClientSet.AppsV1().DaemonSets(f.Namespace.Name).List(ctx, metav1.ListOptions{})
 		Expect(err).NotTo(HaveOccurred(), "unable to dump DaemonSets")
 		if daemonsets != nil && len(daemonsets.Items) > 0 {
 			for _, ds := range daemonsets.Items {
@@ -78,12 +80,12 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 				Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to be reaped")
 			}
 		}
-		if daemonsets, err := f.ClientSet.AppsV1().DaemonSets(f.Namespace.Name).List(metav1.ListOptions{}); err == nil {
+		if daemonsets, err := f.ClientSet.AppsV1().DaemonSets(f.Namespace.Name).List(ctx, metav1.ListOptions{}); err == nil {
 			framework.Logf("daemonset: %s", runtime.EncodeOrDie(legacyscheme.Codecs.LegacyCodec(legacyscheme.Scheme.PrioritizedVersionsAllGroups()...), daemonsets))
 		} else {
 			framework.Logf("unable to dump daemonsets: %v", err)
 		}
-		if pods, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{}); err == nil {
+		if pods, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(ctx, metav1.ListOptions{}); err == nil {
 			framework.Logf("pods: %s", runtime.EncodeOrDie(legacyscheme.Codecs.LegacyCodec(legacyscheme.Scheme.PrioritizedVersionsAllGroups()...), pods))
 		} else {
 			framework.Logf("unable to dump pods: %v", err)
@@ -117,7 +119,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		label := map[string]string{daemonsetNameLabel: dsName}
 
 		By(fmt.Sprintf("Creating simple DaemonSet %q", dsName))
-		ds, err := c.AppsV1().DaemonSets(ns).Create(newDaemonSet(dsName, image, label))
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, newDaemonSet(dsName, image, label))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Check that daemon pods launch on every node of the cluster.")
@@ -129,7 +131,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		By("Stop a daemon pod, check that the daemon pod is revived.")
 		podList := listDaemonPods(c, ns, label)
 		pod := podList.Items[0]
-		err = c.CoreV1().Pods(ns).Delete(pod.Name, nil)
+		err = c.CoreV1().Pods(ns).Delete(ctx, pod.Name, nil)
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(dsRetryPeriod, dsRetryTimeout, checkRunningOnAllNodes(f, ds))
 		Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to revive")
@@ -146,7 +148,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		framework.Logf("Creating daemon %q with a node selector", dsName)
 		ds := newDaemonSet(dsName, image, complexLabel)
 		ds.Spec.Template.Spec.NodeSelector = nodeSelector
-		ds, err := c.AppsV1().DaemonSets(ns).Create(ds)
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, ds)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Initially, daemon pods should not be running on any nodes.")
@@ -175,7 +177,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		By("Update DaemonSet node selector to green, and change its update strategy to RollingUpdate")
 		patch := fmt.Sprintf(`{"spec":{"template":{"spec":{"nodeSelector":{"%s":"%s"}}},"updateStrategy":{"type":"RollingUpdate"}}}`,
 			daemonsetColorLabel, greenNode.Labels[daemonsetColorLabel])
-		ds, err = c.AppsV1().DaemonSets(ns).Patch(dsName, types.StrategicMergePatchType, []byte(patch))
+		ds, err = c.AppsV1().DaemonSets(ns).Patch(ctx, dsName, types.StrategicMergePatchType, []byte(patch))
 		Expect(err).NotTo(HaveOccurred(), "error patching daemon set")
 		daemonSetLabels, _ = separateDaemonSetNodeLabels(greenNode.Labels)
 		Expect(len(daemonSetLabels)).To(Equal(1))
@@ -209,7 +211,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 				},
 			},
 		}
-		ds, err := c.AppsV1().DaemonSets(ns).Create(ds)
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, ds)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Initially, daemon pods should not be running on any nodes.")
@@ -243,7 +245,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		label := map[string]string{daemonsetNameLabel: dsName}
 
 		By(fmt.Sprintf("Creating a simple DaemonSet %q", dsName))
-		ds, err := c.AppsV1().DaemonSets(ns).Create(newDaemonSet(dsName, image, label))
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, newDaemonSet(dsName, image, label))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Check that daemon pods launch on every node of the cluster.")
@@ -257,7 +259,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		pod := podList.Items[0]
 		pod.ResourceVersion = ""
 		pod.Status.Phase = v1.PodFailed
-		_, err = c.CoreV1().Pods(ns).UpdateStatus(&pod)
+		_, err = c.CoreV1().Pods(ns).UpdateStatus(ctx, &pod)
 		Expect(err).NotTo(HaveOccurred(), "error failing a daemon pod")
 		err = wait.PollImmediate(dsRetryPeriod, dsRetryTimeout, checkRunningOnAllNodes(f, ds))
 		Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to revive")
@@ -275,7 +277,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		framework.Logf("Creating simple daemon set %s", dsName)
 		ds := newDaemonSet(dsName, image, label)
 		ds.Spec.UpdateStrategy = apps.DaemonSetUpdateStrategy{Type: apps.OnDeleteDaemonSetStrategyType}
-		ds, err := c.AppsV1().DaemonSets(ns).Create(ds)
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, ds)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Check that daemon pods launch on every node of the cluster.")
@@ -283,7 +285,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to start")
 
 		// Check history and labels
-		ds, err = c.AppsV1().DaemonSets(ns).Get(ds.Name, metav1.GetOptions{})
+		ds, err = c.AppsV1().DaemonSets(ns).Get(ctx, ds.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		waitForHistoryCreated(c, ns, label, 1)
 		first := curHistory(listDaemonHistories(c, ns, label), ds)
@@ -293,7 +295,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 
 		By("Update daemon pods image.")
 		patch := getDaemonSetImagePatch(ds.Spec.Template.Spec.Containers[0].Name, RedisImage)
-		ds, err = c.AppsV1().DaemonSets(ns).Patch(dsName, types.StrategicMergePatchType, []byte(patch))
+		ds, err = c.AppsV1().DaemonSets(ns).Patch(ctx, dsName, types.StrategicMergePatchType, []byte(patch))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Check that daemon pods images aren't updated.")
@@ -305,7 +307,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to start")
 
 		// Check history and labels
-		ds, err = c.AppsV1().DaemonSets(ns).Get(ds.Name, metav1.GetOptions{})
+		ds, err = c.AppsV1().DaemonSets(ns).Get(ctx, ds.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		waitForHistoryCreated(c, ns, label, 2)
 		cur := curHistory(listDaemonHistories(c, ns, label), ds)
@@ -324,7 +326,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		framework.Logf("Creating simple daemon set %s", dsName)
 		ds := newDaemonSet(dsName, image, label)
 		ds.Spec.UpdateStrategy = apps.DaemonSetUpdateStrategy{Type: apps.RollingUpdateDaemonSetStrategyType}
-		ds, err := c.AppsV1().DaemonSets(ns).Create(ds)
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, ds)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Check that daemon pods launch on every node of the cluster.")
@@ -332,7 +334,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to start")
 
 		// Check history and labels
-		ds, err = c.AppsV1().DaemonSets(ns).Get(ds.Name, metav1.GetOptions{})
+		ds, err = c.AppsV1().DaemonSets(ns).Get(ctx, ds.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		waitForHistoryCreated(c, ns, label, 1)
 		cur := curHistory(listDaemonHistories(c, ns, label), ds)
@@ -342,7 +344,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 
 		By("Update daemon pods image.")
 		patch := getDaemonSetImagePatch(ds.Spec.Template.Spec.Containers[0].Name, RedisImage)
-		ds, err = c.AppsV1().DaemonSets(ns).Patch(dsName, types.StrategicMergePatchType, []byte(patch))
+		ds, err = c.AppsV1().DaemonSets(ns).Patch(ctx, dsName, types.StrategicMergePatchType, []byte(patch))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Check that daemon pods images are updated.")
@@ -354,7 +356,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		Expect(err).NotTo(HaveOccurred(), "error waiting for daemon pod to start")
 
 		// Check history and labels
-		ds, err = c.AppsV1().DaemonSets(ns).Get(ds.Name, metav1.GetOptions{})
+		ds, err = c.AppsV1().DaemonSets(ns).Get(ctx, ds.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		waitForHistoryCreated(c, ns, label, 2)
 		cur = curHistory(listDaemonHistories(c, ns, label), ds)
@@ -376,7 +378,7 @@ var _ = SIGDescribe("Daemon set [Serial]", func() {
 		label := map[string]string{daemonsetNameLabel: dsName}
 		ds := newDaemonSet(dsName, image, label)
 		ds.Spec.UpdateStrategy = apps.DaemonSetUpdateStrategy{Type: apps.RollingUpdateDaemonSetStrategyType}
-		ds, err := c.AppsV1().DaemonSets(ns).Create(ds)
+		ds, err := c.AppsV1().DaemonSets(ns).Create(ctx, ds)
 		Expect(err).NotTo(HaveOccurred())
 
 		framework.Logf("Check that daemon pods launch on every node of the cluster")
@@ -469,7 +471,7 @@ func newDaemonSet(dsName, image string, label map[string]string) *apps.DaemonSet
 func listDaemonPods(c clientset.Interface, ns string, label map[string]string) *v1.PodList {
 	selector := labels.Set(label).AsSelector()
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	podList, err := c.CoreV1().Pods(ns).List(options)
+	podList, err := c.CoreV1().Pods(ns).List(context.TODO(), options)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(len(podList.Items)).To(BeNumerically(">", 0))
 	return podList
@@ -501,10 +503,11 @@ func clearDaemonSetNodeLabels(c clientset.Interface) error {
 
 func setDaemonSetNodeLabels(c clientset.Interface, nodeName string, labels map[string]string) (*v1.Node, error) {
 	nodeClient := c.CoreV1().Nodes()
+	ctx := context.TODO()
 	var newNode *v1.Node
 	var newLabels map[string]string
 	err := wait.PollImmediate(dsRetryPeriod, dsRetryTimeout, func() (bool, error) {
-		node, err := nodeClient.Get(nodeName, metav1.GetOptions{})
+		node, err := nodeClient.Get(ctx, nodeName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -519,7 +522,7 @@ func setDaemonSetNodeLabels(c clientset.Interface, nodeName string, labels map[s
 		for k, v := range labels {
 			node.Labels[k] = v
 		}
-		newNode, err = nodeClient.Update(node)
+		newNode, err = nodeClient.Update(ctx, node)
 		if err == nil {
 			newLabels, _ = separateDaemonSetNodeLabels(newNode.Labels)
 			return true, err
@@ -541,7 +544,7 @@ func setDaemonSetNodeLabels(c clientset.Interface, nodeName string, labels map[s
 
 func checkDaemonPodOnNodes(f *framework.Framework, ds *apps.DaemonSet, nodeNames []string) func() (bool, error) {
 	return func() (bool, error) {
-		podList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{})
+		podList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			framework.Logf("could not get the pod list: %v", err)
 			return false, nil
@@ -586,7 +589,7 @@ func checkRunningOnAllNodes(f *framework.Framework, ds *apps.DaemonSet) func() (
 }
 
 func schedulableNodes(c clientset.Interface, ds *apps.DaemonSet) []string {
-	nodeList, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := c.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err)
 	nodeNames := make([]string, 0)
 	for _, node := range nodeList.Items {
@@ -629,7 +632,7 @@ func checkRunningOnNoNodes(f *framework.Framework, ds *apps.DaemonSet) func() (b
 }
 
 func checkDaemonStatus(f *framework.Framework, dsName string) error {
-	ds, err := f.ClientSet.AppsV1().DaemonSets(f.Namespace.Name).Get(dsName, metav1.GetOptions{})
+	ds, err := f.ClientSet.AppsV1().DaemonSets(f.Namespace.Name).Get(context.TODO(), dsName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Could not get daemon set from v1.")
 	}
@@ -642,7 +645,7 @@ func checkDaemonStatus(f *framework.Framework, dsName string) error {
 
 func checkDaemonPodsImageAndAvailability(c clientset.Interface, ds *apps.DaemonSet, image string, maxUnavailable int) func() (bool, error) {
 	return func() (bool, error) {
-		podList, err := c.CoreV1().Pods(ds.Namespace).List(metav1.ListOptions{})
+		podList, err := c.CoreV1().Pods(ds.Namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -693,7 +696,7 @@ func waitForHistoryCreated(c clientset.Interface, ns string, label map[string]st
 	listHistoryFn := func() (bool, error) {
 		selector := labels.Set(label).AsSelector()
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		historyList, err := c.AppsV1beta1().ControllerRevisions(ns).List(options)
+		historyList, err := c.AppsV1beta1().ControllerRevisions(ns).List(context.TODO(), options)
 		if err != nil {
 			return false, err
 		}
@@ -710,7 +713,7 @@ func waitForHistoryCreated(c clientset.Interface, ns string, label map[string]st
 func listDaemonHistories(c clientset.Interface, ns string, label map[string]string) *apps.ControllerRevisionList {
 	selector := labels.Set(label).AsSelector()
 	options := metav1.ListOptions{LabelSelector: selector.String()}
-	historyList, err := c.AppsV1().ControllerRevisions(ns).List(options)
+	historyList, err := c.AppsV1().ControllerRevisions(ns).List(context.TODO(), options)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(len(historyList.Items)).To(BeNumerically(">", 0))
 	return historyList
@@ -737,7 +740,7 @@ func curHistory(historyList *apps.ControllerRevisionList, ds *apps.DaemonSet) *a
 
 func waitFailedDaemonPodDeleted(c clientset.Interface, pod *v1.Pod) func() (bool, error) {
 	return func() (bool, error) {
-		if _, err := c.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{}); err != nil {
+		if _, err := c.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{}); err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
 			}

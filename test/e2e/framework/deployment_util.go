@@ -17,6 +17,7 @@ limitations under the License.
 package framework
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -45,7 +46,7 @@ func WaitForDeploymentOldRSsNum(c clientset.Interface, ns, deploymentName string
 	var d *extensions.Deployment
 
 	pollErr := wait.PollImmediate(Poll, 5*time.Minute, func() (bool, error) {
-		deployment, err := c.ExtensionsV1beta1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
+		deployment, err := c.ExtensionsV1beta1().Deployments(ns).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -144,7 +145,7 @@ func WatchRecreateDeployment(c clientset.Interface, d *extensions.Deployment) er
 		return fmt.Errorf("deployment %q does not use a Recreate strategy: %s", d.Name, d.Spec.Strategy.Type)
 	}
 
-	w, err := c.ExtensionsV1beta1().Deployments(d.Namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: d.Name, ResourceVersion: d.ResourceVersion}))
+	w, err := c.ExtensionsV1beta1().Deployments(d.Namespace).Watch(context.TODO(), metav1.SingleObject(metav1.ObjectMeta{Name: d.Name, ResourceVersion: d.ResourceVersion}))
 	if err != nil {
 		return err
 	}
@@ -195,7 +196,7 @@ func logPodsOfDeployment(c clientset.Interface, deployment *extensions.Deploymen
 
 func WaitForDeploymentRevision(c clientset.Interface, d *extensions.Deployment, targetRevision string) error {
 	err := wait.PollImmediate(Poll, pollLongTimeout, func() (bool, error) {
-		deployment, err := c.ExtensionsV1beta1().Deployments(d.Namespace).Get(d.Name, metav1.GetOptions{})
+		deployment, err := c.ExtensionsV1beta1().Deployments(d.Namespace).Get(context.TODO(), d.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -215,7 +216,7 @@ func CheckDeploymentRevisionAndImage(c clientset.Interface, ns, deploymentName, 
 
 func CreateDeployment(client clientset.Interface, replicas int32, podLabels map[string]string, nodeSelector map[string]string, namespace string, pvclaims []*v1.PersistentVolumeClaim, command string) (*extensions.Deployment, error) {
 	deploymentSpec := MakeDeployment(replicas, podLabels, nodeSelector, namespace, pvclaims, false, command)
-	deployment, err := client.ExtensionsV1beta1().Deployments(namespace).Create(deploymentSpec)
+	deployment, err := client.ExtensionsV1beta1().Deployments(namespace).Create(context.TODO(), deploymentSpec)
 	if err != nil {
 		return nil, fmt.Errorf("deployment %q Create API error: %v", deploymentSpec.Name, err)
 	}
@@ -289,7 +290,7 @@ func GetPodsForDeployment(client clientset.Interface, deployment *extensions.Dep
 		return nil, fmt.Errorf("expected a new replica set for deployment %q, found none", deployment.Name)
 	}
 	podListFunc := func(namespace string, options metav1.ListOptions) (*v1.PodList, error) {
-		return client.CoreV1().Pods(namespace).List(options)
+		return client.CoreV1().Pods(namespace).List(context.TODO(), options)
 	}
 	rsList := []*extensions.ReplicaSet{replicaSet}
 	podList, err := deploymentutil.ListPods(deployment, rsList, podListFunc)

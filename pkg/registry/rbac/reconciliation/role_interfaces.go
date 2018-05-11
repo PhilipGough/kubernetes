@@ -24,6 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/apis/rbac"
 	core "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/rbac/internalversion"
+	"context"
 )
 
 // +k8s:deepcopy-gen=true
@@ -82,7 +83,7 @@ type RoleModifier struct {
 }
 
 func (c RoleModifier) Get(namespace, name string) (RuleOwner, error) {
-	ret, err := c.Client.Roles(namespace).Get(name, metav1.GetOptions{})
+	ret, err := c.Client.Roles(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -91,11 +92,11 @@ func (c RoleModifier) Get(namespace, name string) (RuleOwner, error) {
 
 func (c RoleModifier) Create(in RuleOwner) (RuleOwner, error) {
 	ns := &api.Namespace{ObjectMeta: metav1.ObjectMeta{Name: in.GetNamespace()}}
-	if _, err := c.NamespaceClient.Create(ns); err != nil && !apierrors.IsAlreadyExists(err) {
+	if _, err := c.NamespaceClient.Create(context.TODO(), ns); err != nil && !apierrors.IsAlreadyExists(err) {
 		return nil, err
 	}
 
-	ret, err := c.Client.Roles(in.GetNamespace()).Create(in.(RoleRuleOwner).Role)
+	ret, err := c.Client.Roles(in.GetNamespace()).Create(context.TODO(), in.(RoleRuleOwner).Role)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +104,7 @@ func (c RoleModifier) Create(in RuleOwner) (RuleOwner, error) {
 }
 
 func (c RoleModifier) Update(in RuleOwner) (RuleOwner, error) {
-	ret, err := c.Client.Roles(in.GetNamespace()).Update(in.(RoleRuleOwner).Role)
+	ret, err := c.Client.Roles(in.GetNamespace()).Update(context.TODO(), in.(RoleRuleOwner).Role)
 	if err != nil {
 		return nil, err
 	}

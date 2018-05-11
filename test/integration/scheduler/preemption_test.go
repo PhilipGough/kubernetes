@@ -19,6 +19,7 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ var lowPriority, mediumPriority, highPriority = int32(100), int32(200), int32(30
 
 func waitForNominatedNodeNameWithTimeout(cs clientset.Interface, pod *v1.Pod, timeout time.Duration) error {
 	if err := wait.Poll(100*time.Millisecond, timeout, func() (bool, error) {
-		pod, err := cs.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+		pod, err := cs.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -501,6 +502,7 @@ func TestPreemptionStarvation(t *testing.T) {
 // 5. Check that nominated node name of the high priority pod is set and nominated
 //    node name of the medium priority pod is cleared.
 func TestNominatedNodeCleanUp(t *testing.T) {
+	ctx := context.TODO()
 	// Enable PodPriority feature gate.
 	utilfeature.DefaultFeatureGate.Set(fmt.Sprintf("%s=true", features.PodPriority))
 	// Initialize scheduler.
@@ -574,7 +576,7 @@ func TestNominatedNodeCleanUp(t *testing.T) {
 	}
 	// And the nominated node name of the medium priority pod is cleared.
 	if err := wait.Poll(100*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
-		pod, err := cs.CoreV1().Pods(medPriPod.Namespace).Get(medPriPod.Name, metav1.GetOptions{})
+		pod, err := cs.CoreV1().Pods(medPriPod.Namespace).Get(ctx, medPriPod.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Errorf("Error getting the medium priority pod info: %v", err)
 		}
@@ -606,6 +608,7 @@ func TestPDBInPreemption(t *testing.T) {
 	// Enable PodPriority feature gate.
 	utilfeature.DefaultFeatureGate.Set(fmt.Sprintf("%s=true", features.PodPriority))
 	// Initialize scheduler.
+	ctx := context.TODO()
 	context := initTest(t, "preemption-pdb")
 	defer cleanupTest(t, context)
 	cs := context.clientSet
@@ -799,7 +802,7 @@ func TestPDBInPreemption(t *testing.T) {
 		}
 		// Create PDBs.
 		for _, pdb := range test.pdbs {
-			_, err := context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Create(pdb)
+			_, err := context.clientSet.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).Create(ctx, pdb)
 			if err != nil {
 				t.Fatalf("Failed to create PDB: %v", err)
 			}
@@ -851,7 +854,7 @@ func TestPDBInPreemption(t *testing.T) {
 		// Cleanup
 		pods = append(pods, preemptor)
 		cleanupPods(cs, t, pods)
-		cs.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).DeleteCollection(nil, metav1.ListOptions{})
-		cs.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
+		cs.PolicyV1beta1().PodDisruptionBudgets(context.ns.Name).DeleteCollection(ctx, nil, metav1.ListOptions{})
+		cs.CoreV1().Nodes().DeleteCollection(ctx, nil, metav1.ListOptions{})
 	}
 }

@@ -17,14 +17,15 @@ limitations under the License.
 package network
 
 import (
+	"context"
+	"fmt"
+
 	"k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/kubernetes/test/e2e/framework"
 	imageutils "k8s.io/kubernetes/test/utils/image"
-
-	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,6 +44,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 	var service *v1.Service
 	var podServer *v1.Pod
 	f := framework.NewDefaultFramework("network-policy")
+	ctx := context.TODO()
 
 	Context("NetworkPolicy between server and client", func() {
 		BeforeEach(func() {
@@ -75,7 +77,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 				},
 			}
 
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -110,7 +112,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 				},
 			}
 
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -163,7 +165,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 					}},
 				},
 			}
-			policy, err = f.ClientSet.NetworkingV1().NetworkPolicies(nsA.Name).Create(policy)
+			policy, err = f.ClientSet.NetworkingV1().NetworkPolicies(nsA.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -192,7 +194,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 					}},
 				},
 			}
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -222,7 +224,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 					}},
 				},
 			}
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -246,7 +248,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 					}},
 				},
 			}
-			policy2, err = f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy2)
+			policy2, err = f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy2)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy2)
 
@@ -269,7 +271,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 					Ingress: []networkingv1.NetworkPolicyIngressRule{{}},
 				},
 			}
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -299,7 +301,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 				},
 			}
 
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -341,7 +343,7 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 				},
 			}
 
-			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(policy)
+			policy, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).Create(ctx, policy)
 			Expect(err).NotTo(HaveOccurred())
 			defer cleanupNetworkPolicy(f, policy)
 
@@ -356,11 +358,12 @@ var _ = SIGDescribe("NetworkPolicy", func() {
 })
 
 func testCanConnect(f *framework.Framework, ns *v1.Namespace, podName string, service *v1.Service, targetPort int) {
+	ctx := context.TODO()
 	By(fmt.Sprintf("Creating client pod %s that should successfully connect to %s.", podName, service.Name))
 	podClient := createNetworkClientPod(f, ns, podName, service, targetPort)
 	defer func() {
 		By(fmt.Sprintf("Cleaning up the pod %s", podName))
-		if err := f.ClientSet.CoreV1().Pods(ns.Name).Delete(podClient.Name, nil); err != nil {
+		if err := f.ClientSet.CoreV1().Pods(ns.Name).Delete(ctx, podClient.Name, nil); err != nil {
 			framework.Failf("unable to cleanup pod %v: %v", podClient.Name, err)
 		}
 	}()
@@ -379,7 +382,7 @@ func testCanConnect(f *framework.Framework, ns *v1.Namespace, podName string, se
 		}
 
 		// Collect current NetworkPolicies applied in the test namespace.
-		policies, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).List(metav1.ListOptions{})
+		policies, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			framework.Logf("error getting current NetworkPolicies for %s namespace: %s", f.Namespace.Name, err)
 		}
@@ -403,11 +406,12 @@ func testCanConnect(f *framework.Framework, ns *v1.Namespace, podName string, se
 }
 
 func testCannotConnect(f *framework.Framework, ns *v1.Namespace, podName string, service *v1.Service, targetPort int) {
+	ctx := context.TODO()
 	By(fmt.Sprintf("Creating client pod %s that should not be able to connect to %s.", podName, service.Name))
 	podClient := createNetworkClientPod(f, ns, podName, service, targetPort)
 	defer func() {
 		By(fmt.Sprintf("Cleaning up the pod %s", podName))
-		if err := f.ClientSet.CoreV1().Pods(ns.Name).Delete(podClient.Name, nil); err != nil {
+		if err := f.ClientSet.CoreV1().Pods(ns.Name).Delete(ctx, podClient.Name, nil); err != nil {
 			framework.Failf("unable to cleanup pod %v: %v", podClient.Name, err)
 		}
 	}()
@@ -425,7 +429,7 @@ func testCannotConnect(f *framework.Framework, ns *v1.Namespace, podName string,
 		}
 
 		// Collect current NetworkPolicies applied in the test namespace.
-		policies, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).List(metav1.ListOptions{})
+		policies, err := f.ClientSet.NetworkingV1().NetworkPolicies(f.Namespace.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			framework.Logf("error getting current NetworkPolicies for %s namespace: %s", f.Namespace.Name, err)
 		}
@@ -452,6 +456,7 @@ func testCannotConnect(f *framework.Framework, ns *v1.Namespace, podName string,
 // Will also assign a pod label with key: "pod-name" and label set to the given podname for later use by the network
 // policy.
 func createServerPodAndService(f *framework.Framework, namespace *v1.Namespace, podName string, ports []int) (*v1.Pod, *v1.Service) {
+	ctx := context.TODO()
 	// Because we have a variable amount of ports, we'll first loop through and generate our Containers for our pod,
 	// and ServicePorts.for our Service.
 	containers := []v1.Container{}
@@ -495,7 +500,7 @@ func createServerPodAndService(f *framework.Framework, namespace *v1.Namespace, 
 	}
 
 	By(fmt.Sprintf("Creating a server pod %s in namespace %s", podName, namespace.Name))
-	pod, err := f.ClientSet.CoreV1().Pods(namespace.Name).Create(&v1.Pod{
+	pod, err := f.ClientSet.CoreV1().Pods(namespace.Name).Create(ctx, &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
 			Labels: map[string]string{
@@ -512,7 +517,7 @@ func createServerPodAndService(f *framework.Framework, namespace *v1.Namespace, 
 
 	svcName := fmt.Sprintf("svc-%s", podName)
 	By(fmt.Sprintf("Creating a service %s for pod %s in namespace %s", svcName, podName, namespace.Name))
-	svc, err := f.ClientSet.CoreV1().Services(namespace.Name).Create(&v1.Service{
+	svc, err := f.ClientSet.CoreV1().Services(namespace.Name).Create(ctx, &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: svcName,
 		},
@@ -530,12 +535,13 @@ func createServerPodAndService(f *framework.Framework, namespace *v1.Namespace, 
 }
 
 func cleanupServerPodAndService(f *framework.Framework, pod *v1.Pod, service *v1.Service) {
+	ctx := context.TODO()
 	By("Cleaning up the server.")
-	if err := f.ClientSet.CoreV1().Pods(pod.Namespace).Delete(pod.Name, nil); err != nil {
+	if err := f.ClientSet.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, nil); err != nil {
 		framework.Failf("unable to cleanup pod %v: %v", pod.Name, err)
 	}
 	By("Cleaning up the server's service.")
-	if err := f.ClientSet.CoreV1().Services(service.Namespace).Delete(service.Name, nil); err != nil {
+	if err := f.ClientSet.CoreV1().Services(service.Namespace).Delete(ctx, service.Name, nil); err != nil {
 		framework.Failf("unable to cleanup svc %v: %v", service.Name, err)
 	}
 }
@@ -544,7 +550,7 @@ func cleanupServerPodAndService(f *framework.Framework, pod *v1.Pod, service *v1
 // This client will attempt a one-shot connection, then die, without restarting the pod.
 // Test can then be asserted based on whether the pod quit with an error or not.
 func createNetworkClientPod(f *framework.Framework, namespace *v1.Namespace, podName string, targetService *v1.Service, targetPort int) *v1.Pod {
-	pod, err := f.ClientSet.CoreV1().Pods(namespace.Name).Create(&v1.Pod{
+	pod, err := f.ClientSet.CoreV1().Pods(namespace.Name).Create(context.TODO(), &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
 			Labels: map[string]string{
@@ -575,7 +581,7 @@ func createNetworkClientPod(f *framework.Framework, namespace *v1.Namespace, pod
 
 func cleanupNetworkPolicy(f *framework.Framework, policy *networkingv1.NetworkPolicy) {
 	By("Cleaning up the policy.")
-	if err := f.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Delete(policy.Name, nil); err != nil {
+	if err := f.ClientSet.NetworkingV1().NetworkPolicies(policy.Namespace).Delete(context.TODO(), policy.Name, nil); err != nil {
 		framework.Failf("unable to cleanup policy %v: %v", policy.Name, err)
 	}
 }

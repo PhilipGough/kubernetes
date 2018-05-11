@@ -19,6 +19,7 @@ package scheduler
 // This file tests the Taint feature.
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -45,6 +46,7 @@ import (
 //   2. NodeController taints nodes by node condition
 //   3. Scheduler allows pod to tolerate node condition taints, e.g. network unavailable
 func TestTaintNodeByCondition(t *testing.T) {
+	ctx := context.TODO()
 	enabled := utilfeature.DefaultFeatureGate.Enabled("TaintNodesByCondition")
 	defer func() {
 		if !enabled {
@@ -139,7 +141,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 		},
 	}
 
-	burstablePodInServ, err := clientset.CoreV1().Pods(nsName).Create(burstablePod)
+	burstablePodInServ, err := clientset.CoreV1().Pods(nsName).Create(ctx, burstablePod)
 	if err != nil {
 		t.Errorf("Case 1: Failed to create pod: %v", err)
 	} else if !reflect.DeepEqual(burstablePodInServ.Spec.Tolerations, []v1.Toleration{memoryPressureToleration}) {
@@ -164,7 +166,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 		},
 	}
 
-	besteffortPodInServ, err := clientset.CoreV1().Pods(nsName).Create(besteffortPod)
+	besteffortPodInServ, err := clientset.CoreV1().Pods(nsName).Create(ctx, besteffortPod)
 	if err != nil {
 		t.Errorf("Case 2: Failed to create pod: %v", err)
 	} else if len(besteffortPodInServ.Spec.Tolerations) != 0 {
@@ -202,7 +204,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 	}
 
 	nodeInformerCh := make(chan bool)
-	nodeInformer := informers.Core().V1().Nodes().Informer()
+	nodeInformer := informers.Core().V1().Nodes().Informer(ctx)
 	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(old, cur interface{}) {
 			curNode := cur.(*v1.Node)
@@ -219,7 +221,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 		},
 	})
 
-	if _, err := clientset.CoreV1().Nodes().Create(networkUnavailableNode); err != nil {
+	if _, err := clientset.CoreV1().Nodes().Create(ctx, networkUnavailableNode); err != nil {
 		t.Errorf("Case 3: Failed to create node: %v", err)
 	} else {
 		select {
@@ -252,7 +254,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 		},
 	}
 
-	if _, err := clientset.CoreV1().Pods(nsName).Create(networkDaemonPod); err != nil {
+	if _, err := clientset.CoreV1().Pods(nsName).Create(ctx, networkDaemonPod); err != nil {
 		t.Errorf("Case 4: Failed to create pod for network daemon: %v", err)
 	} else {
 		if err := waitForPodToScheduleWithTimeout(clientset, networkDaemonPod, time.Second*60); err != nil {
@@ -283,7 +285,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 	}
 
 	nodeInformerCh2 := make(chan bool)
-	nodeInformer2 := informers.Core().V1().Nodes().Informer()
+	nodeInformer2 := informers.Core().V1().Nodes().Informer(ctx)
 	nodeInformer2.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: func(old, cur interface{}) {
 			curNode := cur.(*v1.Node)
@@ -301,7 +303,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 		},
 	})
 
-	if _, err := clientset.CoreV1().Nodes().Create(unschedulableNode); err != nil {
+	if _, err := clientset.CoreV1().Nodes().Create(ctx, unschedulableNode); err != nil {
 		t.Errorf("Case 5: Failed to create node: %v", err)
 	} else {
 		select {

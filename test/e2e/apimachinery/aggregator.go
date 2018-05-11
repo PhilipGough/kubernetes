@@ -17,6 +17,7 @@ limitations under the License.
 package apimachinery
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -84,16 +85,17 @@ var _ = SIGDescribe("Aggregator", func() {
 })
 
 func cleanTest(client clientset.Interface, aggrclient *aggregatorclient.Clientset, namespace string) {
+	ctx := context.TODO()
 	// delete the APIService first to avoid causing discovery errors
-	_ = aggrclient.ApiregistrationV1beta1().APIServices().Delete("v1alpha1.wardle.k8s.io", nil)
+	_ = aggrclient.ApiregistrationV1beta1().APIServices().Delete(ctx, "v1alpha1.wardle.k8s.io", nil)
 
-	_ = client.ExtensionsV1beta1().Deployments(namespace).Delete("sample-apiserver", nil)
-	_ = client.CoreV1().Secrets(namespace).Delete("sample-apiserver-secret", nil)
-	_ = client.CoreV1().Services(namespace).Delete("sample-api", nil)
-	_ = client.CoreV1().ServiceAccounts(namespace).Delete("sample-apiserver", nil)
-	_ = client.RbacV1beta1().RoleBindings("kube-system").Delete("wardler-auth-reader", nil)
-	_ = client.RbacV1beta1().ClusterRoles().Delete("wardler", nil)
-	_ = client.RbacV1beta1().ClusterRoleBindings().Delete("wardler:"+namespace+":anonymous", nil)
+	_ = client.ExtensionsV1beta1().Deployments(namespace).Delete(ctx, "sample-apiserver", nil)
+	_ = client.CoreV1().Secrets(namespace).Delete(ctx, "sample-apiserver-secret", nil)
+	_ = client.CoreV1().Services(namespace).Delete(ctx, "sample-api", nil)
+	_ = client.CoreV1().ServiceAccounts(namespace).Delete(ctx, "sample-apiserver", nil)
+	_ = client.RbacV1beta1().RoleBindings("kube-system").Delete(ctx, "wardler-auth-reader", nil)
+	_ = client.RbacV1beta1().ClusterRoles().Delete(ctx, "wardler", nil)
+	_ = client.RbacV1beta1().ClusterRoleBindings().Delete(ctx, "wardler:"+namespace+":anonymous", nil)
 }
 
 // A basic test if the sample-apiserver code from 1.7 and compiled against 1.7
@@ -106,6 +108,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 	aggrclient := f.AggregatorClient
 
 	namespace := f.Namespace.Name
+	ctx := context.TODO()
 	context := setupServerCert(namespace, "sample-api")
 	if framework.ProviderIs("gke") {
 		// kubectl create clusterrolebinding user-cluster-admin-binding --clusterrole=cluster-admin --user=user@domain.com
@@ -128,7 +131,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 			"tls.key": context.key,
 		},
 	}
-	_, err := client.CoreV1().Secrets(namespace).Create(secret)
+	_, err := client.CoreV1().Secrets(namespace).Create(ctx, secret)
 	framework.ExpectNoError(err, "creating secret %q in namespace %q", secretName, namespace)
 
 	// kubectl create -f deploy.yaml
@@ -192,7 +195,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 			},
 		},
 	}
-	deployment, err := client.ExtensionsV1beta1().Deployments(namespace).Create(d)
+	deployment, err := client.ExtensionsV1beta1().Deployments(namespace).Create(ctx, d)
 	framework.ExpectNoError(err, "creating deployment %s in namespace %s", deploymentName, namespace)
 	err = framework.WaitForDeploymentRevisionAndImage(client, namespace, deploymentName, "1", image)
 	framework.ExpectNoError(err, "waiting for the deployment of image %s in %s in %s to complete", image, deploymentName, namespace)
@@ -218,16 +221,16 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 			},
 		},
 	}
-	_, err = client.CoreV1().Services(namespace).Create(service)
+	_, err = client.CoreV1().Services(namespace).Create(ctx, service)
 	framework.ExpectNoError(err, "creating service %s in namespace %s", "sample-apiserver", namespace)
 
 	// kubectl create -f serviceAccount.yaml
 	sa := &v1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sample-apiserver"}}
-	_, err = client.CoreV1().ServiceAccounts(namespace).Create(sa)
+	_, err = client.CoreV1().ServiceAccounts(namespace).Create(ctx, sa)
 	framework.ExpectNoError(err, "creating service account %s in namespace %s", "sample-apiserver", namespace)
 
 	// kubectl create -f authDelegator.yaml
-	_, err = client.RbacV1beta1().ClusterRoleBindings().Create(&rbacv1beta1.ClusterRoleBinding{
+	_, err = client.RbacV1beta1().ClusterRoleBindings().Create(ctx, &rbacv1beta1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "wardler:" + namespace + ":anonymous",
 		},
@@ -260,7 +263,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 			},
 			Rules: []rbacapi.PolicyRule{resourceRule, urlRule},
 		}
-		_, err = iclient.Rbac().ClusterRoles().Create(&role)
+		_, err = iclient.Rbac().ClusterRoles().Create(ctx, &role)
 		if err != nil {
 			return false, nil
 		}
@@ -269,7 +272,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 	framework.ExpectNoError(err, "creating cluster role wardler - may not have permissions")
 
 	// kubectl create -f auth-reader.yaml
-	_, err = client.RbacV1beta1().RoleBindings("kube-system").Create(&rbacv1beta1.RoleBinding{
+	_, err = client.RbacV1beta1().RoleBindings("kube-system").Create(ctx, &rbacv1beta1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "wardler-auth-reader",
 			Annotations: map[string]string{
@@ -299,7 +302,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 	framework.ExpectNoError(err, "deploying extension apiserver in namespace %s", namespace)
 
 	// kubectl create -f apiservice.yaml
-	_, err = aggrclient.ApiregistrationV1beta1().APIServices().Create(&apiregistrationv1beta1.APIService{
+	_, err = aggrclient.ApiregistrationV1beta1().APIServices().Create(ctx, &apiregistrationv1beta1.APIService{
 		ObjectMeta: metav1.ObjectMeta{Name: "v1alpha1.wardle.k8s.io"},
 		Spec: apiregistrationv1beta1.APIServiceSpec{
 			Service: &apiregistrationv1beta1.ServiceReference{
@@ -350,7 +353,7 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 		framework.Failf("Flunders client creation response was status %d, not 201", statusCode)
 	}
 
-	pods, err := client.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	framework.ExpectNoError(result.Error(), "getting pods for flunders service")
 
 	// kubectl get flunders -v 9
@@ -433,15 +436,16 @@ func TestSampleAPIServer(f *framework.Framework, image string) {
 
 func validateErrorWithDebugInfo(f *framework.Framework, err error, pods *v1.PodList, msg string, fields ...interface{}) {
 	if err != nil {
+		ctx := context.TODO()
 		namespace := f.Namespace.Name
 		msg := fmt.Sprintf(msg, fields...)
 		msg += fmt.Sprintf(" but received unexpected error:\n%v", err)
 		client := f.ClientSet
-		ep, err := client.CoreV1().Endpoints(namespace).Get("sample-api", metav1.GetOptions{})
+		ep, err := client.CoreV1().Endpoints(namespace).Get(ctx, "sample-api", metav1.GetOptions{})
 		if err == nil {
 			msg += fmt.Sprintf("\nFound endpoints for sample-api:\n%v", ep)
 		}
-		pds, err := client.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		pds, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 		if err == nil {
 			msg += fmt.Sprintf("\nFound pods in %s:\n%v", namespace, pds)
 			msg += fmt.Sprintf("\nOriginal pods in %s:\n%v", namespace, pods)

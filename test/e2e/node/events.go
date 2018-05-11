@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -35,6 +36,7 @@ import (
 
 var _ = SIGDescribe("Events", func() {
 	f := framework.NewDefaultFramework("events")
+	ctx := context.TODO()
 
 	framework.ConformanceIt("should be sent by kubelets and the scheduler about pods scheduling and running ", func() {
 
@@ -65,9 +67,9 @@ var _ = SIGDescribe("Events", func() {
 		By("submitting the pod to kubernetes")
 		defer func() {
 			By("deleting the pod")
-			podClient.Delete(pod.Name, nil)
+			podClient.Delete(ctx, pod.Name, nil)
 		}()
-		if _, err := podClient.Create(pod); err != nil {
+		if _, err := podClient.Create(ctx, pod); err != nil {
 			framework.Failf("Failed to create pod: %v", err)
 		}
 
@@ -76,11 +78,11 @@ var _ = SIGDescribe("Events", func() {
 		By("verifying the pod is in kubernetes")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err := podClient.List(options)
+		pods, err := podClient.List(ctx, options)
 		Expect(len(pods.Items)).To(Equal(1))
 
 		By("retrieving the pod")
-		podWithUid, err := podClient.Get(pod.Name, metav1.GetOptions{})
+		podWithUid, err := podClient.Get(ctx, pod.Name, metav1.GetOptions{})
 		if err != nil {
 			framework.Failf("Failed to get pod: %v", err)
 		}
@@ -96,7 +98,7 @@ var _ = SIGDescribe("Events", func() {
 				"source":                   v1.DefaultSchedulerName,
 			}.AsSelector().String()
 			options := metav1.ListOptions{FieldSelector: selector}
-			events, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).List(options)
+			events, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).List(ctx, options)
 			if err != nil {
 				return false, err
 			}
@@ -116,7 +118,7 @@ var _ = SIGDescribe("Events", func() {
 				"source":                   "kubelet",
 			}.AsSelector().String()
 			options := metav1.ListOptions{FieldSelector: selector}
-			events, err = f.ClientSet.CoreV1().Events(f.Namespace.Name).List(options)
+			events, err = f.ClientSet.CoreV1().Events(f.Namespace.Name).List(ctx, options)
 			if err != nil {
 				return false, err
 			}

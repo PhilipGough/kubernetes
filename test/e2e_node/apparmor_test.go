@@ -18,6 +18,7 @@ package e2e_node
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -142,6 +143,7 @@ func loadTestProfiles() error {
 }
 
 func runAppArmorTest(f *framework.Framework, shouldRun bool, profile string) v1.PodStatus {
+	ctx := context.TODO()
 	pod := createPodWithAppArmor(f, profile)
 	if shouldRun {
 		// The pod needs to start before it stops, so wait for the longer start timeout.
@@ -149,7 +151,7 @@ func runAppArmorTest(f *framework.Framework, shouldRun bool, profile string) v1.
 			f.ClientSet, pod.Name, f.Namespace.Name, framework.PodStartTimeout))
 	} else {
 		// Pod should remain in the pending state. Wait for the Reason to be set to "AppArmor".
-		w, err := f.PodClient().Watch(metav1.SingleObject(metav1.ObjectMeta{Name: pod.Name}))
+		w, err := f.PodClient().Watch(ctx, metav1.SingleObject(metav1.ObjectMeta{Name: pod.Name}))
 		framework.ExpectNoError(err)
 		_, err = watch.Until(framework.PodStartTimeout, w, func(e watch.Event) (bool, error) {
 			switch e.Type {
@@ -166,7 +168,7 @@ func runAppArmorTest(f *framework.Framework, shouldRun bool, profile string) v1.
 		})
 		framework.ExpectNoError(err)
 	}
-	p, err := f.PodClient().Get(pod.Name, metav1.GetOptions{})
+	p, err := f.PodClient().Get(ctx, pod.Name, metav1.GetOptions{})
 	framework.ExpectNoError(err)
 	return p.Status
 }

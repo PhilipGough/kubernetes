@@ -17,6 +17,7 @@ limitations under the License.
 package upgrade
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -123,7 +124,7 @@ func PerformPostUpgradeTasks(client clientset.Interface, cfg *kubeadmapi.MasterC
 func removeOldKubeDNSDeploymentIfCoreDNSIsUsed(cfg *kubeadmapi.MasterConfiguration, client clientset.Interface) error {
 	if features.Enabled(cfg.FeatureGates, features.CoreDNS) {
 		return apiclient.TryRunCommand(func() error {
-			coreDNSDeployment, err := client.AppsV1().Deployments(metav1.NamespaceSystem).Get(kubeadmconstants.CoreDNS, metav1.GetOptions{})
+			coreDNSDeployment, err := client.AppsV1().Deployments(metav1.NamespaceSystem).Get(context.TODO(), kubeadmconstants.CoreDNS, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}

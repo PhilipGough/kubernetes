@@ -17,7 +17,9 @@ limitations under the License.
 package benchmark
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -215,12 +217,13 @@ func (na nodeAffinity) mutatePodTemplate(pod *v1.Pod) {
 
 // generateNodes generates nodes to be used for scheduling.
 func (inputConfig *schedulerPerfConfig) generateNodes(config *testConfig) {
+	ctx := context.TODO()
 	for i := 0; i < inputConfig.NodeCount; i++ {
-		config.schedulerSupportFunctions.GetClient().CoreV1().Nodes().Create(config.mutatedNodeTemplate)
+		config.schedulerSupportFunctions.GetClient().CoreV1().Nodes().Create(ctx, config.mutatedNodeTemplate)
 
 	}
 	for i := 0; i < config.numNodes-inputConfig.NodeCount; i++ {
-		config.schedulerSupportFunctions.GetClient().CoreV1().Nodes().Create(baseNodeTemplate)
+		config.schedulerSupportFunctions.GetClient().CoreV1().Nodes().Create(ctx, baseNodeTemplate)
 
 	}
 }

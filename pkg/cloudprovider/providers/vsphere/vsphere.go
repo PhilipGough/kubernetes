@@ -220,7 +220,7 @@ func (vs *VSphere) SetInformers(informerFactory informers.SharedInformerFactory)
 	// Only on controller node it is required to register listeners.
 	// Register callbacks for node updates
 	glog.V(4).Infof("Setting up node informers for vSphere Cloud Provider")
-	nodeInformer := informerFactory.Core().V1().Nodes().Informer()
+	nodeInformer := informerFactory.Core().V1().Nodes().Informer(context.TODO())
 	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    vs.NodeAdded,
 		DeleteFunc: vs.NodeDeleted,

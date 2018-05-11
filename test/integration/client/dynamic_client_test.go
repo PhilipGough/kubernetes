@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -33,6 +34,7 @@ import (
 )
 
 func TestDynamicClient(t *testing.T) {
+	ctx := context.TODO()
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
@@ -85,7 +87,7 @@ func TestDynamicClient(t *testing.T) {
 		},
 	}
 
-	actual, err := client.Core().Pods(ns.Name).Create(pod)
+	actual, err := client.Core().Pods(ns.Name).Create(ctx, pod)
 	if err != nil {
 		t.Fatalf("unexpected error when creating pod: %v", err)
 	}
@@ -134,7 +136,7 @@ func TestDynamicClient(t *testing.T) {
 		t.Fatalf("unexpected error when deleting pod: %v", err)
 	}
 
-	list, err := client.Core().Pods(ns.Name).List(metav1.ListOptions{})
+	list, err := client.Core().Pods(ns.Name).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error when listing pods: %v", err)
 	}

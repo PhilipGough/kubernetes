@@ -38,6 +38,7 @@ type State struct {
 }
 
 func testPreStop(c clientset.Interface, ns string) {
+	ctx := context.TODO()
 	// This is the server that will receive the preStop notification
 	podDescr := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -54,13 +55,13 @@ func testPreStop(c clientset.Interface, ns string) {
 		},
 	}
 	By(fmt.Sprintf("Creating server pod %s in namespace %s", podDescr.Name, ns))
-	podDescr, err := c.CoreV1().Pods(ns).Create(podDescr)
+	podDescr, err := c.CoreV1().Pods(ns).Create(ctx, podDescr)
 	framework.ExpectNoError(err, fmt.Sprintf("creating pod %s", podDescr.Name))
 
 	// At the end of the test, clean up by removing the pod.
 	defer func() {
 		By("Deleting the server pod")
-		c.CoreV1().Pods(ns).Delete(podDescr.Name, nil)
+		c.CoreV1().Pods(ns).Delete(ctx, podDescr.Name, nil)
 	}()
 
 	By("Waiting for pods to come up.")
@@ -69,7 +70,7 @@ func testPreStop(c clientset.Interface, ns string) {
 
 	val := "{\"Source\": \"prestop\"}"
 
-	podOut, err := c.CoreV1().Pods(ns).Get(podDescr.Name, metav1.GetOptions{})
+	podOut, err := c.CoreV1().Pods(ns).Get(ctx, podDescr.Name, metav1.GetOptions{})
 	framework.ExpectNoError(err, "getting pod info")
 
 	preStopDescr := &v1.Pod{
@@ -97,7 +98,7 @@ func testPreStop(c clientset.Interface, ns string) {
 	}
 
 	By(fmt.Sprintf("Creating tester pod %s in namespace %s", preStopDescr.Name, ns))
-	preStopDescr, err = c.CoreV1().Pods(ns).Create(preStopDescr)
+	preStopDescr, err = c.CoreV1().Pods(ns).Create(ctx, preStopDescr)
 	framework.ExpectNoError(err, fmt.Sprintf("creating pod %s", preStopDescr.Name))
 	deletePreStop := true
 
@@ -105,7 +106,7 @@ func testPreStop(c clientset.Interface, ns string) {
 	defer func() {
 		if deletePreStop {
 			By("Deleting the tester pod")
-			c.CoreV1().Pods(ns).Delete(preStopDescr.Name, nil)
+			c.CoreV1().Pods(ns).Delete(ctx, preStopDescr.Name, nil)
 		}
 	}()
 
@@ -114,7 +115,7 @@ func testPreStop(c clientset.Interface, ns string) {
 
 	// Delete the pod with the preStop handler.
 	By("Deleting pre-stop pod")
-	if err := c.CoreV1().Pods(ns).Delete(preStopDescr.Name, nil); err == nil {
+	if err := c.CoreV1().Pods(ns).Delete(ctx, preStopDescr.Name, nil); err == nil {
 		deletePreStop = false
 	}
 	framework.ExpectNoError(err, fmt.Sprintf("deleting pod: %s", preStopDescr.Name))

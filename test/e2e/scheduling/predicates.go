@@ -17,6 +17,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -66,9 +67,10 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 	var ns string
 	f := framework.NewDefaultFramework("sched-pred")
 	ignoreLabels := framework.ImagePullerLabels
+	ctx := context.TODO()
 
 	AfterEach(func() {
-		rc, err := cs.CoreV1().ReplicationControllers(ns).Get(RCName, metav1.GetOptions{})
+		rc, err := cs.CoreV1().ReplicationControllers(ns).Get(ctx, RCName, metav1.GetOptions{})
 		if err == nil && *(rc.Spec.Replicas) != 0 {
 			By("Cleaning up the replication controller")
 			err := framework.DeleteRCAndPods(f.ClientSet, f.InternalClientset, f.ScalesGetter, ns, RCName)
@@ -171,7 +173,7 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 		}
 		framework.WaitForStableCluster(cs, masterNodes)
 
-		pods, err := cs.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{})
+		pods, err := cs.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
 		framework.ExpectNoError(err)
 		for _, pod := range pods.Items {
 			_, found := nodeToAllocatableMap[pod.Spec.NodeName]
@@ -275,7 +277,7 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 			}
 		}()
 
-		pods, err := cs.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{})
+		pods, err := cs.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
 		framework.ExpectNoError(err)
 		for _, pod := range pods.Items {
 			_, found := nodeToAllocatableMap[pod.Spec.NodeName]
@@ -396,7 +398,7 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 		// already when the kubelet does not know about its new label yet. The
 		// kubelet will then refuse to launch the pod.
 		framework.ExpectNoError(framework.WaitForPodNotPending(cs, ns, labelPodName))
-		labelPod, err := cs.CoreV1().Pods(ns).Get(labelPodName, metav1.GetOptions{})
+		labelPod, err := cs.CoreV1().Pods(ns).Get(ctx, labelPodName, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
 	})
@@ -483,7 +485,7 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 		// already when the kubelet does not know about its new label yet. The
 		// kubelet will then refuse to launch the pod.
 		framework.ExpectNoError(framework.WaitForPodNotPending(cs, ns, labelPodName))
-		labelPod, err := cs.CoreV1().Pods(ns).Get(labelPodName, metav1.GetOptions{})
+		labelPod, err := cs.CoreV1().Pods(ns).Get(ctx, labelPodName, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
 	})
@@ -526,7 +528,7 @@ var _ = SIGDescribe("SchedulerPredicates [Serial]", func() {
 		// already when the kubelet does not know about its new taint yet. The
 		// kubelet will then refuse to launch the pod.
 		framework.ExpectNoError(framework.WaitForPodNotPending(cs, ns, tolerationPodName))
-		deployedPod, err := cs.CoreV1().Pods(ns).Get(tolerationPodName, metav1.GetOptions{})
+		deployedPod, err := cs.CoreV1().Pods(ns).Get(ctx, tolerationPodName, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		Expect(deployedPod.Spec.NodeName).To(Equal(nodeName))
 	})
@@ -651,7 +653,7 @@ func initPausePod(f *framework.Framework, conf pausePodConfig) *v1.Pod {
 }
 
 func createPausePod(f *framework.Framework, conf pausePodConfig) *v1.Pod {
-	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(initPausePod(f, conf))
+	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(context.TODO(), initPausePod(f, conf))
 	framework.ExpectNoError(err)
 	return pod
 }
@@ -659,7 +661,7 @@ func createPausePod(f *framework.Framework, conf pausePodConfig) *v1.Pod {
 func runPausePod(f *framework.Framework, conf pausePodConfig) *v1.Pod {
 	pod := createPausePod(f, conf)
 	framework.ExpectNoError(framework.WaitForPodRunningInNamespace(f.ClientSet, pod))
-	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(conf.Name, metav1.GetOptions{})
+	pod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(context.TODO(), conf.Name, metav1.GetOptions{})
 	framework.ExpectNoError(err)
 	return pod
 }
@@ -672,7 +674,7 @@ func runPodAndGetNodeName(f *framework.Framework, conf pausePodConfig) string {
 	pod := runPausePod(f, conf)
 
 	By("Explicitly delete pod here to free the resource it takes.")
-	err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(pod.Name, metav1.NewDeleteOptions(0))
+	err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(context.TODO(), pod.Name, metav1.NewDeleteOptions(0))
 	framework.ExpectNoError(err)
 
 	return pod.Spec.NodeName
@@ -706,7 +708,7 @@ func removeTaintFromNodeAction(cs clientset.Interface, nodeName string, testTain
 // createPausePodAction returns a closure that creates a pause pod upon invocation.
 func createPausePodAction(f *framework.Framework, conf pausePodConfig) common.Action {
 	return func() error {
-		_, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(initPausePod(f, conf))
+		_, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(context.TODO(), initPausePod(f, conf))
 		return err
 	}
 }
@@ -725,7 +727,7 @@ func WaitForSchedulerAfterAction(f *framework.Framework, action common.Action, n
 
 // TODO: upgrade calls in PodAffinity tests when we're able to run them
 func verifyResult(c clientset.Interface, expectedScheduled int, expectedNotScheduled int, ns string) {
-	allPods, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	allPods, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err)
 	scheduledPods, notScheduledPods := framework.GetPodsScheduled(masterNodes, allPods)
 
@@ -764,7 +766,7 @@ func verifyReplicasResult(c clientset.Interface, expectedScheduled int, expected
 
 func getPodsByLabels(c clientset.Interface, ns string, labelsMap map[string]string) *v1.PodList {
 	selector := labels.SelectorFromSet(labels.Set(labelsMap))
-	allPods, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+	allPods, err := c.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: selector.String()})
 	framework.ExpectNoError(err)
 	return allPods
 }

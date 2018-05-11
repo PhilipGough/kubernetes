@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -62,7 +63,7 @@ func removePtr(replicas *int32) int32 {
 
 func WaitUntilPodIsScheduled(c clientset.Interface, name, namespace string, timeout time.Duration) (*v1.Pod, error) {
 	// Wait until it's scheduled
-	p, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{ResourceVersion: "0"})
+	p, err := c.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{ResourceVersion: "0"})
 	if err == nil && p.Spec.NodeName != "" {
 		return p, nil
 	}
@@ -70,7 +71,7 @@ func WaitUntilPodIsScheduled(c clientset.Interface, name, namespace string, time
 	startTime := time.Now()
 	for startTime.Add(timeout).After(time.Now()) {
 		time.Sleep(pollingPeriod)
-		p, err := c.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{ResourceVersion: "0"})
+		p, err := c.CoreV1().Pods(namespace).Get(context.TODO(), name, metav1.GetOptions{ResourceVersion: "0"})
 		if err == nil && p.Spec.NodeName != "" {
 			return p, nil
 		}
@@ -794,7 +795,7 @@ func (config *RCConfig) start() error {
 	if oldRunning != config.Replicas {
 		// List only pods from a given replication controller.
 		options := metav1.ListOptions{LabelSelector: label.String()}
-		if pods, err := config.Client.CoreV1().Pods(metav1.NamespaceAll).List(options); err == nil {
+		if pods, err := config.Client.CoreV1().Pods(metav1.NamespaceAll).List(context.TODO(), options); err == nil {
 			for _, pod := range pods.Items {
 				config.RCConfigLog("Pod %s\t%s\t%s\t%s", pod.Name, pod.Spec.NodeName, pod.Status.Phase, pod.DeletionTimestamp)
 			}
@@ -935,7 +936,7 @@ func DoPrepareNode(client clientset.Interface, node *v1.Node, strategy PrepareNo
 		return nil
 	}
 	for attempt := 0; attempt < retries; attempt++ {
-		if _, err = client.CoreV1().Nodes().Patch(node.Name, types.MergePatchType, []byte(patch)); err == nil {
+		if _, err = client.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.MergePatchType, []byte(patch)); err == nil {
 			return nil
 		}
 		if !apierrs.IsConflict(err) {
@@ -948,7 +949,7 @@ func DoPrepareNode(client clientset.Interface, node *v1.Node, strategy PrepareNo
 
 func DoCleanupNode(client clientset.Interface, nodeName string, strategy PrepareNodeStrategy) error {
 	for attempt := 0; attempt < retries; attempt++ {
-		node, err := client.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+		node, err := client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("Skipping cleanup of Node: failed to get Node %v: %v", nodeName, err)
 		}
@@ -956,7 +957,7 @@ func DoCleanupNode(client clientset.Interface, nodeName string, strategy Prepare
 		if apiequality.Semantic.DeepEqual(node, updatedNode) {
 			return nil
 		}
-		if _, err = client.CoreV1().Nodes().Update(updatedNode); err == nil {
+		if _, err = client.CoreV1().Nodes().Update(context.TODO(), updatedNode); err == nil {
 			return nil
 		}
 		if !apierrs.IsConflict(err) {
@@ -1275,7 +1276,7 @@ func (config *DaemonConfig) Run() error {
 	var err error
 	for i := 0; i < retries; i++ {
 		// Wait for all daemons to be running
-		nodes, err = config.Client.CoreV1().Nodes().List(metav1.ListOptions{ResourceVersion: "0"})
+		nodes, err = config.Client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{ResourceVersion: "0"})
 		if err == nil {
 			break
 		} else if i+1 == retries {

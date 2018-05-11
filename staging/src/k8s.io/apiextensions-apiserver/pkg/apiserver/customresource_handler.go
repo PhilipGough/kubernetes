@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"path"
@@ -115,13 +116,13 @@ func NewCustomResourceDefinitionHandler(
 		versionDiscoveryHandler: versionDiscoveryHandler,
 		groupDiscoveryHandler:   groupDiscoveryHandler,
 		customStorage:           atomic.Value{},
-		crdLister:               crdInformer.Lister(),
+		crdLister:               crdInformer.Lister(context.TODO()),
 		delegate:                delegate,
 		restOptionsGetter:       restOptionsGetter,
 		admission:               admission,
 	}
 
-	crdInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	crdInformer.Informer(context.TODO()).AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: ret.updateCustomResourceDefinition,
 		DeleteFunc: func(obj interface{}) {
 			ret.removeDeadStorage()

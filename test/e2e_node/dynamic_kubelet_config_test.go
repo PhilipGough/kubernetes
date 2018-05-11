@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_node
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -53,6 +54,7 @@ type configState struct {
 // This test is marked [Disruptive] because the Kubelet restarts several times during this test.
 var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKubeletConfig] [Serial] [Disruptive]", func() {
 	f := framework.NewDefaultFramework("dynamic-kubelet-configuration-test")
+	ctx := context.TODO()
 	var originalKC *kubeletconfig.KubeletConfiguration
 	var originalConfigMap *apiv1.ConfigMap
 
@@ -64,7 +66,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 				originalKC, err = getCurrentKubeletConfig()
 				framework.ExpectNoError(err)
 				originalConfigMap = newKubeletConfigMap("original-values", originalKC)
-				originalConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(originalConfigMap)
+				originalConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, originalConfigMap)
 				framework.ExpectNoError(err)
 			}
 			// make sure Dynamic Kubelet Configuration feature is enabled on the Kubelet we are about to test
@@ -103,7 +105,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 				// we base the "correct" configmap off of the current configuration
 				correctKC := originalKC.DeepCopy()
 				correctConfigMap := newKubeletConfigMap("dynamic-kubelet-config-test-correct", correctKC)
-				correctConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(correctConfigMap)
+				correctConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, correctConfigMap)
 				framework.ExpectNoError(err)
 
 				// fail to parse, we insert some bogus stuff into the configMap
@@ -113,7 +115,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 						"kubelet": "{0xdeadbeef}",
 					},
 				}
-				failParseConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(failParseConfigMap)
+				failParseConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, failParseConfigMap)
 				framework.ExpectNoError(err)
 
 				// fail to validate, we make a copy and set an invalid KubeAPIQPS on kc before serializing
@@ -121,7 +123,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 
 				invalidKC.KubeAPIQPS = -1
 				failValidateConfigMap := newKubeletConfigMap("dynamic-kubelet-config-test-fail-validate", invalidKC)
-				failValidateConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(failValidateConfigMap)
+				failValidateConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, failValidateConfigMap)
 				framework.ExpectNoError(err)
 
 				states := []configState{
@@ -257,7 +259,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 				// we base the "lkg" configmap off of the current configuration
 				lkgKC := originalKC.DeepCopy()
 				lkgConfigMap := newKubeletConfigMap("dynamic-kubelet-config-test-intended-lkg", lkgKC)
-				lkgConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(lkgConfigMap)
+				lkgConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, lkgConfigMap)
 				framework.ExpectNoError(err)
 
 				// bad config map, we insert some bogus stuff into the configMap
@@ -267,7 +269,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 						"kubelet": "{0xdeadbeef}",
 					},
 				}
-				badConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(badConfigMap)
+				badConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, badConfigMap)
 				framework.ExpectNoError(err)
 
 				states := []configState{
@@ -315,7 +317,7 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 				lkgKC := originalKC.DeepCopy()
 				combinedConfigMap := newKubeletConfigMap("dynamic-kubelet-config-test-combined", lkgKC)
 				combinedConfigMap.Data[badConfigKey] = "{0xdeadbeef}"
-				combinedConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(combinedConfigMap)
+				combinedConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, combinedConfigMap)
 				framework.ExpectNoError(err)
 
 				states := []configState{
@@ -365,14 +367,14 @@ var _ = framework.KubeDescribe("DynamicKubeletConfiguration [Feature:DynamicKube
 				// we just create two configmaps with the same config but different names and toggle between them
 				kc1 := originalKC.DeepCopy()
 				cm1 := newKubeletConfigMap("dynamic-kubelet-config-test-cm1", kc1)
-				cm1, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(cm1)
+				cm1, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, cm1)
 				framework.ExpectNoError(err)
 
 				// slightly change the config
 				kc2 := kc1.DeepCopy()
 				kc2.EventRecordQPS = kc1.EventRecordQPS + 1
 				cm2 := newKubeletConfigMap("dynamic-kubelet-config-test-cm2", kc2)
-				cm2, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(cm2)
+				cm2, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(ctx, cm2)
 				framework.ExpectNoError(err)
 
 				states := []configState{
@@ -478,7 +480,7 @@ func checkNodeConfigSource(f *framework.Framework, desc string, expect *apiv1.No
 		interval = time.Second
 	)
 	Eventually(func() error {
-		node, err := f.ClientSet.CoreV1().Nodes().Get(framework.TestContext.NodeName, metav1.GetOptions{})
+		node, err := f.ClientSet.CoreV1().Nodes().Get(context.TODO(), framework.TestContext.NodeName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("checkNodeConfigSource: case %s: %v", desc, err)
 		}
@@ -497,7 +499,7 @@ func checkConfigOkCondition(f *framework.Framework, desc string, expect *apiv1.N
 		interval = time.Second
 	)
 	Eventually(func() error {
-		node, err := f.ClientSet.CoreV1().Nodes().Get(framework.TestContext.NodeName, metav1.GetOptions{})
+		node, err := f.ClientSet.CoreV1().Nodes().Get(context.TODO(), framework.TestContext.NodeName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("checkConfigOkCondition: case %s: %v", desc, err)
 		}
@@ -553,7 +555,7 @@ func checkEvent(f *framework.Framework, desc string, expect *apiv1.NodeConfigSou
 		interval = time.Second
 	)
 	Eventually(func() error {
-		events, err := f.ClientSet.CoreV1().Events("").List(metav1.ListOptions{})
+		events, err := f.ClientSet.CoreV1().Events("").List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return fmt.Errorf("checkEvent: case %s: %v", desc, err)
 		}

@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"time"
 
@@ -254,7 +255,7 @@ func (o *RollingUpdateOptions) Run() error {
 
 	var newRc *api.ReplicationController
 	// fetch rc
-	oldRc, err := coreClient.ReplicationControllers(o.Namespace).Get(o.OldName, metav1.GetOptions{})
+	oldRc, err := coreClient.ReplicationControllers(o.Namespace).Get(context.TODO(), o.OldName, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) || len(o.Image) == 0 || !o.KeepOldName {
 			return err
@@ -440,7 +441,7 @@ func (o *RollingUpdateOptions) Run() error {
 		if err != nil {
 			return err
 		}
-		coreClient.ReplicationControllers(config.NewRc.Namespace).Update(config.NewRc)
+		coreClient.ReplicationControllers(config.NewRc.Namespace).Update(context.TODO(), config.NewRc)
 	}
 	err = updater.Update(config)
 	if err != nil {
@@ -453,7 +454,7 @@ func (o *RollingUpdateOptions) Run() error {
 	} else {
 		message = fmt.Sprintf("rolling updated to %q", newRc.Name)
 	}
-	newRc, err = coreClient.ReplicationControllers(o.Namespace).Get(newRc.Name, metav1.GetOptions{})
+	newRc, err = coreClient.ReplicationControllers(o.Namespace).Get(context.TODO(), newRc.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

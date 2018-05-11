@@ -17,6 +17,7 @@ limitations under the License.
 package secret
 
 import (
+	"context"
 	"sync"
 
 	"k8s.io/api/core/v1"
@@ -58,7 +59,7 @@ func NewSimpleSecretManager(kubeClient clientset.Interface) Manager {
 }
 
 func (s *simpleSecretManager) GetSecret(namespace, name string) (*v1.Secret, error) {
-	return s.kubeClient.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	return s.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
 func (s *simpleSecretManager) RegisterPod(pod *v1.Pod) {

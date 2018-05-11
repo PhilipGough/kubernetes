@@ -17,6 +17,7 @@ limitations under the License.
 package e2e_node
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -486,7 +487,7 @@ func runEvictionTest(f *framework.Framework, pressureTimeout time.Duration, expe
 // This function panics (via Expect) if eviction ordering is violated, or if a priority-zero pod fails.
 func verifyEvictionOrdering(f *framework.Framework, testSpecs []podEvictSpec) error {
 	// Gather current information
-	updatedPodList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{})
+	updatedPodList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

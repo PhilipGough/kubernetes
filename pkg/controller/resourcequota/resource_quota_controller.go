@@ -55,7 +55,7 @@ type ReplenishmentFunc func(groupResource schema.GroupResource, namespace string
 
 // InformerFactory is all the quota system needs to interface with informers.
 type InformerFactory interface {
-	ForResource(resource schema.GroupVersionResource) (informers.GenericInformer, error)
+	ForResource(ctx context.Context, resource schema.GroupVersionResource) (informers.GenericInformer, error)
 	Start(stopCh <-chan struct{})
 }
 

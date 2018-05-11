@@ -17,6 +17,7 @@ limitations under the License.
 package upgrade
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -77,7 +78,7 @@ func loadConfigurationBytes(client clientset.Interface, w io.Writer, cfgPath str
 
 	fmt.Println("[upgrade/config] Reading configuration from the cluster...")
 
-	configMap, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(constants.MasterConfigurationConfigMap, metav1.GetOptions{})
+	configMap, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(context.TODO(), constants.MasterConfigurationConfigMap, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		fmt.Printf("[upgrade/config] In order to upgrade, a ConfigMap called %q in the %s namespace must exist.\n", constants.MasterConfigurationConfigMap, metav1.NamespaceSystem)
 		fmt.Println("[upgrade/config] Without this information, 'kubeadm upgrade' won't know how to configure your upgraded cluster.")

@@ -1264,11 +1264,11 @@ type podInformer struct {
 	informer cache.SharedIndexInformer
 }
 
-func (i *podInformer) Informer() cache.SharedIndexInformer {
-	return i.informer
+func (i *podInformer) Informer(ctx context.Context) cache.SharedIndexInformer {
+	return i.Informer(ctx)
 }
 
-func (i *podInformer) Lister() corelisters.PodLister {
+func (i *podInformer) Lister(ctx context.Context) corelisters.PodLister {
 	return corelisters.NewPodLister(i.informer.GetIndexer())
 }
 
@@ -1277,7 +1277,7 @@ func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) core
 	selector := fields.ParseSelectorOrDie(
 		"status.phase!=" + string(v1.PodSucceeded) +
 			",status.phase!=" + string(v1.PodFailed))
-	lw := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), string(v1.ResourcePods), metav1.NamespaceAll, selector)
+	lw := cache.NewListWatchFromClient(context.TODO(), client.CoreV1().RESTClient(), string(v1.ResourcePods), metav1.NamespaceAll, selector)
 	return &podInformer{
 		informer: cache.NewSharedIndexInformer(lw, &v1.Pod{}, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}),
 	}
@@ -1295,7 +1295,7 @@ func (c *configFactory) MakeDefaultErrorFunc(backoff *util.PodBackoff, podQueue 
 					nodeName := errStatus.Status().Details.Name
 					// when node is not found, We do not remove the node right away. Trying again to get
 					// the node and if the node is still not found, then remove it from the scheduler cache.
-					_, err := c.client.CoreV1().Nodes().Get(context.TODO(),nodeName, metav1.GetOptions{})
+					_, err := c.client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 					if err != nil && errors.IsNotFound(err) {
 						node := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: nodeName}}
 						c.schedulerCache.RemoveNode(&node)
@@ -1335,7 +1335,7 @@ func (c *configFactory) MakeDefaultErrorFunc(backoff *util.PodBackoff, podQueue 
 			// Get the pod again; it may have changed/been scheduled already.
 			getBackoff := initialGetBackoff
 			for {
-				pod, err := c.client.CoreV1().Pods(podID.Namespace).Get(context.TODO(),podID.Name, metav1.GetOptions{})
+				pod, err := c.client.CoreV1().Pods(podID.Namespace).Get(context.TODO(), podID.Name, metav1.GetOptions{})
 				if err == nil {
 					if len(pod.Spec.NodeName) == 0 {
 						podQueue.AddUnschedulableIfNotPresent(pod)
@@ -1401,7 +1401,7 @@ type podConditionUpdater struct {
 func (p *podConditionUpdater) Update(pod *v1.Pod, condition *v1.PodCondition) error {
 	glog.V(2).Infof("Updating pod condition for %s/%s to (%s==%s)", pod.Namespace, pod.Name, condition.Type, condition.Status)
 	if podutil.UpdatePodCondition(&pod.Status, condition) {
-		_, err := p.Client.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(),pod)
+		_, err := p.Client.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), pod)
 		return err
 	}
 	return nil
@@ -1412,17 +1412,17 @@ type podPreemptor struct {
 }
 
 func (p *podPreemptor) GetUpdatedPod(pod *v1.Pod) (*v1.Pod, error) {
-	return p.Client.CoreV1().Pods(pod.Namespace).Get(context.TODO(),pod.Name, metav1.GetOptions{})
+	return p.Client.CoreV1().Pods(pod.Namespace).Get(context.TODO(), pod.Name, metav1.GetOptions{})
 }
 
 func (p *podPreemptor) DeletePod(pod *v1.Pod) error {
-	return p.Client.CoreV1().Pods(pod.Namespace).Delete(context.TODO(),pod.Name, &metav1.DeleteOptions{})
+	return p.Client.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, &metav1.DeleteOptions{})
 }
 
 func (p *podPreemptor) SetNominatedNodeName(pod *v1.Pod, nominatedNodeName string) error {
 	podCopy := pod.DeepCopy()
 	podCopy.Status.NominatedNodeName = nominatedNodeName
-	_, err := p.Client.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(),podCopy)
+	_, err := p.Client.CoreV1().Pods(pod.Namespace).UpdateStatus(context.TODO(), podCopy)
 	return err
 }
 

@@ -17,6 +17,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -59,6 +60,7 @@ var _ = SIGDescribe("Multi-AZ Cluster Volumes [sig-storage]", func() {
 
 // OnlyAllowNodeZones tests that GetAllCurrentZones returns only zones with Nodes
 func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
+	ctx := context.TODO()
 	gceCloud, err := framework.GetGCECloud()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -141,7 +143,7 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 		// Defer the cleanup
 		defer func() {
 			framework.Logf("deleting claim %q/%q", pvc.Namespace, pvc.Name)
-			err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, nil)
+			err = c.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(ctx, pvc.Name, nil)
 			if err != nil {
 				framework.Failf("Error deleting claim %q. Error: %v", pvc.Name, err)
 			}
@@ -158,11 +160,11 @@ func OnlyAllowNodeZones(f *framework.Framework, zoneCount int, image string) {
 	By("Checking that PDs have been provisioned in only the expected zones")
 	for _, claim := range pvcList {
 		// Get a new copy of the claim to have all fields populated
-		claim, err = c.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
+		claim, err = c.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		// Get the related PV
-		pv, err := c.CoreV1().PersistentVolumes().Get(claim.Spec.VolumeName, metav1.GetOptions{})
+		pv, err := c.CoreV1().PersistentVolumes().Get(ctx, claim.Spec.VolumeName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		pvZone, ok := pv.ObjectMeta.Labels[kubeletapis.LabelZoneFailureDomain]
@@ -232,7 +234,7 @@ func PodsUseStaticPVsOrFail(f *framework.Framework, podCount int, image string) 
 	By("Creating pods for each static PV")
 	for _, config := range configs {
 		podConfig := framework.MakePod(ns, nil, []*v1.PersistentVolumeClaim{config.pvc}, false, "")
-		config.pod, err = c.CoreV1().Pods(ns).Create(podConfig)
+		config.pod, err = c.CoreV1().Pods(ns).Create(context.TODO(), podConfig)
 		Expect(err).NotTo(HaveOccurred())
 	}
 

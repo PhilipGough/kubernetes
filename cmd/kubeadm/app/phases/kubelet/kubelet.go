@@ -17,6 +17,7 @@ limitations under the License.
 package kubelet
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -81,7 +82,7 @@ func ConsumeBaseKubeletConfiguration(nodeName string) error {
 		return err
 	}
 
-	kubeletCfg, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(kubeadmconstants.KubeletBaseConfigurationConfigMap, metav1.GetOptions{})
+	kubeletCfg, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(context.TODO(), kubeadmconstants.KubeletBaseConfigurationConfigMap, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -100,7 +101,7 @@ func updateNodeWithConfigMap(client clientset.Interface, nodeName string) error 
 
 	// Loop on every falsy return. Return with an error if raised. Exit successfully if true is returned.
 	return wait.Poll(kubeadmconstants.APICallRetryInterval, kubeadmconstants.UpdateNodeTimeout, func() (bool, error) {
-		node, err := client.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+		node, err := client.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -110,7 +111,7 @@ func updateNodeWithConfigMap(client clientset.Interface, nodeName string) error 
 			return false, err
 		}
 
-		kubeletCfg, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(kubeadmconstants.KubeletBaseConfigurationConfigMap, metav1.GetOptions{})
+		kubeletCfg, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(context.TODO(), kubeadmconstants.KubeletBaseConfigurationConfigMap, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -134,7 +135,7 @@ func updateNodeWithConfigMap(client clientset.Interface, nodeName string) error 
 			return false, err
 		}
 
-		if _, err := client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patchBytes); err != nil {
+		if _, err := client.CoreV1().Nodes().Patch(context.TODO(), node.Name, types.StrategicMergePatchType, patchBytes); err != nil {
 			if apierrs.IsConflict(err) {
 				fmt.Println("Temporarily unable to update node metadata due to conflict (will retry)")
 				return false, nil

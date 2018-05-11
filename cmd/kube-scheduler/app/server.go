@@ -18,6 +18,7 @@ limitations under the License.
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -640,12 +641,12 @@ func (s *SchedulerServer) Run(stop chan struct{}) error {
 	}
 
 	// Start all informers.
-	go s.PodInformer.Informer().Run(stop)
+	go s.PodInformer.Informer(context.TODO()).Run(stop)
 	s.InformerFactory.Start(stop)
 
 	// Wait for all caches to sync before scheduling.
 	s.InformerFactory.WaitForCacheSync(stop)
-	controller.WaitForCacheSync("scheduler", stop, s.PodInformer.Informer().HasSynced)
+	controller.WaitForCacheSync("scheduler", stop, s.PodInformer.Informer(context.TODO()).HasSynced)
 
 	// Prepare a reusable run function.
 	run := func(stopCh <-chan struct{}) {
@@ -735,7 +736,7 @@ func (s *SchedulerServer) SchedulerConfig() (*scheduler.Config, error) {
 		case source.Policy.ConfigMap != nil:
 			// Use a policy serialized in a config map value.
 			policyRef := source.Policy.ConfigMap
-			policyConfigMap, err := s.Client.CoreV1().ConfigMaps(policyRef.Namespace).Get(policyRef.Name, metav1.GetOptions{})
+			policyConfigMap, err := s.Client.CoreV1().ConfigMaps(policyRef.Namespace).Get(context.TODO(), policyRef.Name, metav1.GetOptions{})
 			if err != nil {
 				return nil, fmt.Errorf("couldn't get policy config map %s/%s: %v", policyRef.Namespace, policyRef.Name, err)
 			}

@@ -17,6 +17,7 @@ limitations under the License.
 package secret
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -174,7 +175,7 @@ func (s *secretStore) Get(namespace, name string) (*v1.Secret, error) {
 			// etcd and apiserver (the cache is eventually consistent).
 			util.FromApiserverCache(&opts)
 		}
-		secret, err := s.kubeClient.CoreV1().Secrets(namespace).Get(name, opts)
+		secret, err := s.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), name, opts)
 		if err != nil && !apierrors.IsNotFound(err) && data.secret == nil && data.err == nil {
 			// Couldn't fetch the latest secret, but there is no cached data to return.
 			// Return the fetch result instead.

@@ -17,6 +17,7 @@ limitations under the License.
 package volume
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -79,6 +80,7 @@ type podCountFunc func(int) bool
 // event is somehow missed by AttachDetach controller - it still
 // gets cleaned up by Desired State of World populator.
 func TestPodDeletionWithDswp(t *testing.T) {
+	ctx := context.TODO()
 	_, server, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 	namespaceName := "test-pod-deletion"
@@ -98,23 +100,23 @@ func TestPodDeletionWithDswp(t *testing.T) {
 	pod := fakePodWithVol(namespaceName)
 	podStopCh := make(chan struct{})
 
-	if _, err := testClient.Core().Nodes().Create(node); err != nil {
+	if _, err := testClient.Core().Nodes().Create(ctx, node); err != nil {
 		t.Fatalf("Failed to created node : %v", err)
 	}
 
-	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
+	go informers.Core().V1().Nodes().Informer(ctx).Run(podStopCh)
 
-	if _, err := testClient.Core().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.Core().Pods(ns.Name).Create(ctx, pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
-	podInformer := informers.Core().V1().Pods().Informer()
+	podInformer := informers.Core().V1().Pods().Informer(ctx)
 	go podInformer.Run(podStopCh)
 
 	// start controller loop
 	stopCh := make(chan struct{})
-	go informers.Core().V1().PersistentVolumeClaims().Informer().Run(stopCh)
-	go informers.Core().V1().PersistentVolumes().Informer().Run(stopCh)
+	go informers.Core().V1().PersistentVolumeClaims().Informer(ctx).Run(stopCh)
+	go informers.Core().V1().PersistentVolumes().Informer(ctx).Run(stopCh)
 	go ctrl.Run(stopCh)
 
 	waitToObservePods(t, podInformer, 1)
@@ -144,6 +146,7 @@ func TestPodDeletionWithDswp(t *testing.T) {
 }
 
 func TestPodUpdateWithWithADC(t *testing.T) {
+	ctx := context.TODO()
 	_, server, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 	namespaceName := "test-pod-update"
@@ -165,23 +168,23 @@ func TestPodUpdateWithWithADC(t *testing.T) {
 	pod := fakePodWithVol(namespaceName)
 	podStopCh := make(chan struct{})
 
-	if _, err := testClient.Core().Nodes().Create(node); err != nil {
+	if _, err := testClient.Core().Nodes().Create(ctx, node); err != nil {
 		t.Fatalf("Failed to created node : %v", err)
 	}
 
-	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
+	go informers.Core().V1().Nodes().Informer(ctx).Run(podStopCh)
 
-	if _, err := testClient.Core().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.Core().Pods(ns.Name).Create(ctx, pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
-	podInformer := informers.Core().V1().Pods().Informer()
+	podInformer := informers.Core().V1().Pods().Informer(ctx)
 	go podInformer.Run(podStopCh)
 
 	// start controller loop
 	stopCh := make(chan struct{})
-	go informers.Core().V1().PersistentVolumeClaims().Informer().Run(stopCh)
-	go informers.Core().V1().PersistentVolumes().Informer().Run(stopCh)
+	go informers.Core().V1().PersistentVolumeClaims().Informer(ctx).Run(stopCh)
+	go informers.Core().V1().PersistentVolumes().Informer(ctx).Run(stopCh)
 	go ctrl.Run(stopCh)
 
 	waitToObservePods(t, podInformer, 1)
@@ -200,7 +203,7 @@ func TestPodUpdateWithWithADC(t *testing.T) {
 
 	pod.Status.Phase = v1.PodSucceeded
 
-	if _, err := testClient.Core().Pods(ns.Name).UpdateStatus(pod); err != nil {
+	if _, err := testClient.Core().Pods(ns.Name).UpdateStatus(ctx, pod); err != nil {
 		t.Errorf("Failed to update pod : %v", err)
 	}
 
@@ -211,6 +214,7 @@ func TestPodUpdateWithWithADC(t *testing.T) {
 }
 
 func TestPodUpdateWithKeepTerminatedPodVolumes(t *testing.T) {
+	ctx := context.TODO()
 	_, server, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 	namespaceName := "test-pod-update"
@@ -233,23 +237,23 @@ func TestPodUpdateWithKeepTerminatedPodVolumes(t *testing.T) {
 	pod := fakePodWithVol(namespaceName)
 	podStopCh := make(chan struct{})
 
-	if _, err := testClient.Core().Nodes().Create(node); err != nil {
+	if _, err := testClient.Core().Nodes().Create(ctx, node); err != nil {
 		t.Fatalf("Failed to created node : %v", err)
 	}
 
-	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
+	go informers.Core().V1().Nodes().Informer(ctx).Run(podStopCh)
 
-	if _, err := testClient.Core().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.Core().Pods(ns.Name).Create(ctx, pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
-	podInformer := informers.Core().V1().Pods().Informer()
+	podInformer := informers.Core().V1().Pods().Informer(ctx)
 	go podInformer.Run(podStopCh)
 
 	// start controller loop
 	stopCh := make(chan struct{})
-	go informers.Core().V1().PersistentVolumeClaims().Informer().Run(stopCh)
-	go informers.Core().V1().PersistentVolumes().Informer().Run(stopCh)
+	go informers.Core().V1().PersistentVolumeClaims().Informer(ctx).Run(stopCh)
+	go informers.Core().V1().PersistentVolumes().Informer(ctx).Run(stopCh)
 	go ctrl.Run(stopCh)
 
 	waitToObservePods(t, podInformer, 1)
@@ -268,7 +272,7 @@ func TestPodUpdateWithKeepTerminatedPodVolumes(t *testing.T) {
 
 	pod.Status.Phase = v1.PodSucceeded
 
-	if _, err := testClient.Core().Pods(ns.Name).UpdateStatus(pod); err != nil {
+	if _, err := testClient.Core().Pods(ns.Name).UpdateStatus(ctx, pod); err != nil {
 		t.Errorf("Failed to update pod : %v", err)
 	}
 
@@ -375,6 +379,7 @@ func createAdClients(ns *v1.Namespace, t *testing.T, server *httptest.Server, sy
 // event is somehow missed by AttachDetach controller - it still
 // gets added by Desired State of World populator.
 func TestPodAddedByDswp(t *testing.T) {
+	ctx := context.TODO()
 	_, server, closeFn := framework.RunAMaster(framework.NewIntegrationTestMasterConfig())
 	defer closeFn()
 	namespaceName := "test-pod-deletion"
@@ -396,23 +401,23 @@ func TestPodAddedByDswp(t *testing.T) {
 	pod := fakePodWithVol(namespaceName)
 	podStopCh := make(chan struct{})
 
-	if _, err := testClient.Core().Nodes().Create(node); err != nil {
+	if _, err := testClient.Core().Nodes().Create(ctx, node); err != nil {
 		t.Fatalf("Failed to created node : %v", err)
 	}
 
-	go informers.Core().V1().Nodes().Informer().Run(podStopCh)
+	go informers.Core().V1().Nodes().Informer(ctx).Run(podStopCh)
 
-	if _, err := testClient.Core().Pods(ns.Name).Create(pod); err != nil {
+	if _, err := testClient.Core().Pods(ns.Name).Create(ctx, pod); err != nil {
 		t.Errorf("Failed to create pod : %v", err)
 	}
 
-	podInformer := informers.Core().V1().Pods().Informer()
+	podInformer := informers.Core().V1().Pods().Informer(ctx)
 	go podInformer.Run(podStopCh)
 
 	// start controller loop
 	stopCh := make(chan struct{})
-	go informers.Core().V1().PersistentVolumeClaims().Informer().Run(stopCh)
-	go informers.Core().V1().PersistentVolumes().Informer().Run(stopCh)
+	go informers.Core().V1().PersistentVolumeClaims().Informer(ctx).Run(stopCh)
+	go informers.Core().V1().PersistentVolumes().Informer(ctx).Run(stopCh)
 	go ctrl.Run(stopCh)
 
 	waitToObservePods(t, podInformer, 1)

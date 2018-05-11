@@ -17,6 +17,7 @@ limitations under the License.
 package dns
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"runtime"
@@ -148,7 +149,7 @@ func coreDNSAddon(cfg *kubeadmapi.MasterConfiguration, client clientset.Interfac
 	}
 
 	// Get the kube-dns ConfigMap for translation to equivalent CoreDNS Config.
-	kubeDNSConfigMap, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(kubeadmconstants.KubeDNS, metav1.GetOptions{})
+	kubeDNSConfigMap, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(context.TODO(), kubeadmconstants.KubeDNS, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -260,7 +261,7 @@ func createDNSService(dnsService *v1.Service, serviceBytes []byte, client client
 	}
 
 	// Can't use a generic apiclient helper func here as we have to tolerate more than AlreadyExists.
-	if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Create(dnsService); err != nil {
+	if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Create(context.TODO(), dnsService); err != nil {
 		// Ignore if the Service is invalid with this error message:
 		// 	Service "kube-dns" is invalid: spec.clusterIP: Invalid value: "10.96.0.10": provided IP is already allocated
 
@@ -268,7 +269,7 @@ func createDNSService(dnsService *v1.Service, serviceBytes []byte, client client
 			return fmt.Errorf("unable to create a new DNS service: %v", err)
 		}
 
-		if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Update(dnsService); err != nil {
+		if _, err := client.CoreV1().Services(metav1.NamespaceSystem).Update(context.TODO(), dnsService); err != nil {
 			return fmt.Errorf("unable to create/update the DNS service: %v", err)
 		}
 	}

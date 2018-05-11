@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -35,12 +36,12 @@ func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, 
 	var updateErr error
 	pollErr := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		var err error
-		if rs, err = c.AppsV1().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
+		if rs, err = c.AppsV1().ReplicaSets(namespace).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rs)
-		if rs, err = c.AppsV1().ReplicaSets(namespace).Update(rs); err == nil {
+		if rs, err = c.AppsV1().ReplicaSets(namespace).Update(context.TODO(), rs); err == nil {
 			logf("Updating replica set %q", name)
 			return true, nil
 		}
@@ -62,12 +63,12 @@ func UpdateExtensionsReplicaSetWithRetries(c clientset.Interface, namespace, nam
 	var updateErr error
 	pollErr := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		var err error
-		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
+		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rs)
-		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Update(rs); err == nil {
+		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Update(context.TODO(), rs); err == nil {
 			logf("Updating replica set %q", name)
 			return true, nil
 		}
@@ -84,7 +85,7 @@ func UpdateExtensionsReplicaSetWithRetries(c clientset.Interface, namespace, nam
 func WaitRSStable(t *testing.T, clientSet clientset.Interface, rs *apps.ReplicaSet, pollInterval, pollTimeout time.Duration) error {
 	desiredGeneration := rs.Generation
 	if err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		newRS, err := clientSet.AppsV1().ReplicaSets(rs.Namespace).Get(rs.Name, metav1.GetOptions{})
+		newRS, err := clientSet.AppsV1().ReplicaSets(rs.Namespace).Get(context.TODO(), rs.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -99,7 +100,7 @@ func WaitRSStable(t *testing.T, clientSet clientset.Interface, rs *apps.ReplicaS
 func WaitExtensionsRSStable(t *testing.T, clientSet clientset.Interface, rs *extensions.ReplicaSet, pollInterval, pollTimeout time.Duration) error {
 	desiredGeneration := rs.Generation
 	if err := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
-		newRS, err := clientSet.ExtensionsV1beta1().ReplicaSets(rs.Namespace).Get(rs.Name, metav1.GetOptions{})
+		newRS, err := clientSet.ExtensionsV1beta1().ReplicaSets(rs.Namespace).Get(context.TODO(), rs.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -116,12 +117,12 @@ func UpdateExtensionsReplicaSetStatusWithRetries(c clientset.Interface, namespac
 	var updateErr error
 	pollErr := wait.PollImmediate(pollInterval, pollTimeout, func() (bool, error) {
 		var err error
-		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Get(name, metav1.GetOptions{}); err != nil {
+		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
 			return false, err
 		}
 		// Apply the update, then attempt to push it to the apiserver.
 		applyUpdate(rs)
-		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).UpdateStatus(rs); err == nil {
+		if rs, err = c.ExtensionsV1beta1().ReplicaSets(namespace).UpdateStatus(context.TODO(), rs); err == nil {
 			logf("Updating replica set %q", name)
 			return true, nil
 		}

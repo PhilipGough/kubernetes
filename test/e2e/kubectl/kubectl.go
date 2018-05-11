@@ -175,6 +175,7 @@ func runKubectlRetryOrDie(args ...string) string {
 var _ = SIGDescribe("Kubectl alpha client", func() {
 	defer GinkgoRecover()
 	f := framework.NewDefaultFramework("kubectl")
+	ctx := context.TODO()
 
 	var c clientset.Interface
 	var ns string
@@ -205,7 +206,7 @@ var _ = SIGDescribe("Kubectl alpha client", func() {
 			framework.RunKubectlOrDie("run", cjName, "--restart=OnFailure", "--generator=cronjob/v2alpha1",
 				"--schedule="+schedule, "--image="+busyboxImage, nsFlag)
 			By("verifying the CronJob " + cjName + " was created")
-			sj, err := c.BatchV1beta1().CronJobs(ns).Get(cjName, metav1.GetOptions{})
+			sj, err := c.BatchV1beta1().CronJobs(ns).Get(ctx, cjName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting CronJob %s: %v", cjName, err)
 			}
@@ -226,6 +227,7 @@ var _ = SIGDescribe("Kubectl alpha client", func() {
 var _ = SIGDescribe("Kubectl client", func() {
 	defer GinkgoRecover()
 	f := framework.NewDefaultFramework("kubectl")
+	ctx := context.TODO()
 
 	// Reusable cluster state function.  This won't be adversely affected by lazy initialization of framework.
 	clusterState := func() *framework.ClusterVerification {
@@ -513,7 +515,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 				ExecOrDie()
 			Expect(runOutput).To(ContainSubstring("abcd1234"))
 			Expect(runOutput).To(ContainSubstring("stdin closed"))
-			Expect(c.BatchV1().Jobs(ns).Delete("run-test", nil)).To(BeNil())
+			Expect(c.BatchV1().Jobs(ns).Delete(ctx, "run-test", nil)).To(BeNil())
 
 			By("executing a command with run and attach without stdin")
 			runOutput = framework.NewKubectlCommand(fmt.Sprintf("--namespace=%v", ns), "run", "run-test-2", "--image="+busyboxImage, "--restart=OnFailure", "--attach=true", "--leave-stdin-open=true", "--", "sh", "-c", "cat && echo 'stdin closed'").
@@ -521,7 +523,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 				ExecOrDie()
 			Expect(runOutput).ToNot(ContainSubstring("abcd1234"))
 			Expect(runOutput).To(ContainSubstring("stdin closed"))
-			Expect(c.BatchV1().Jobs(ns).Delete("run-test-2", nil)).To(BeNil())
+			Expect(c.BatchV1().Jobs(ns).Delete(ctx, "run-test-2", nil)).To(BeNil())
 
 			By("executing a command with run and attach with stdin with open stdin should remain running")
 			runOutput = framework.NewKubectlCommand(nsFlag, "run", "run-test-3", "--image="+busyboxImage, "--restart=OnFailure", "--attach=true", "--leave-stdin-open=true", "--stdin", "--", "sh", "-c", "cat && echo 'stdin closed'").
@@ -552,7 +554,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 			}
 			Expect(err).To(BeNil())
 
-			Expect(c.BatchV1().Jobs(ns).Delete("run-test-3", nil)).To(BeNil())
+			Expect(c.BatchV1().Jobs(ns).Delete(ctx, "run-test-3", nil)).To(BeNil())
 		})
 
 		It("should support port-forward", func() {
@@ -887,7 +889,7 @@ metadata:
 
 			// Node
 			// It should be OK to list unschedulable Nodes here.
-			nodes, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+			nodes, err := c.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			node := nodes.Items[0]
 			output = framework.RunKubectlOrDie("describe", "node", node.Name)
@@ -948,7 +950,7 @@ metadata:
 			})
 			validateService := func(name string, servicePort int, timeout time.Duration) {
 				err := wait.Poll(framework.Poll, timeout, func() (bool, error) {
-					endpoints, err := c.CoreV1().Endpoints(ns).Get(name, metav1.GetOptions{})
+					endpoints, err := c.CoreV1().Endpoints(ns).Get(ctx, name, metav1.GetOptions{})
 					if err != nil {
 						// log the real error
 						framework.Logf("Get endpoints failed (interval %v): %v", framework.Poll, err)
@@ -979,7 +981,7 @@ metadata:
 				})
 				Expect(err).NotTo(HaveOccurred())
 
-				service, err := c.CoreV1().Services(ns).Get(name, metav1.GetOptions{})
+				service, err := c.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred())
 
 				if len(service.Spec.Ports) != 1 {
@@ -1231,7 +1233,7 @@ metadata:
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", rcName, "--image="+nginxImage, "--generator=run/v1", nsFlag)
 			By("verifying the rc " + rcName + " was created")
-			rc, err := c.CoreV1().ReplicationControllers(ns).Get(rcName, metav1.GetOptions{})
+			rc, err := c.CoreV1().ReplicationControllers(ns).Get(ctx, rcName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting rc %s: %v", rcName, err)
 			}
@@ -1292,7 +1294,7 @@ metadata:
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", rcName, "--image="+nginxImage, "--generator=run/v1", nsFlag)
 			By("verifying the rc " + rcName + " was created")
-			rc, err := c.CoreV1().ReplicationControllers(ns).Get(rcName, metav1.GetOptions{})
+			rc, err := c.CoreV1().ReplicationControllers(ns).Get(ctx, rcName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting rc %s: %v", rcName, err)
 			}
@@ -1341,7 +1343,7 @@ metadata:
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", dName, "--image="+nginxImage, "--generator=deployment/v1beta1", nsFlag)
 			By("verifying the deployment " + dName + " was created")
-			d, err := c.ExtensionsV1beta1().Deployments(ns).Get(dName, metav1.GetOptions{})
+			d, err := c.ExtensionsV1beta1().Deployments(ns).Get(ctx, dName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting deployment %s: %v", dName, err)
 			}
@@ -1386,7 +1388,7 @@ metadata:
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", jobName, "--restart=OnFailure", "--generator=job/v1", "--image="+nginxImage, nsFlag)
 			By("verifying the job " + jobName + " was created")
-			job, err := c.BatchV1().Jobs(ns).Get(jobName, metav1.GetOptions{})
+			job, err := c.BatchV1().Jobs(ns).Get(ctx, jobName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting job %s: %v", jobName, err)
 			}
@@ -1420,7 +1422,7 @@ metadata:
 			framework.RunKubectlOrDie("run", cjName, "--restart=OnFailure", "--generator=cronjob/v1beta1",
 				"--schedule="+schedule, "--image="+busyboxImage, nsFlag)
 			By("verifying the CronJob " + cjName + " was created")
-			cj, err := c.BatchV1beta1().CronJobs(ns).Get(cjName, metav1.GetOptions{})
+			cj, err := c.BatchV1beta1().CronJobs(ns).Get(ctx, cjName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting CronJob %s: %v", cjName, err)
 			}
@@ -1459,7 +1461,7 @@ metadata:
 			By("running the image " + nginxImage)
 			framework.RunKubectlOrDie("run", podName, "--restart=Never", "--generator=run-pod/v1", "--image="+nginxImage, nsFlag)
 			By("verifying the pod " + podName + " was created")
-			pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+			pod, err := c.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting pod %s: %v", podName, err)
 			}
@@ -1513,7 +1515,7 @@ metadata:
 			framework.RunKubectlOrDieInput(podJson, "replace", "-f", "-", nsFlag)
 
 			By("verifying the pod " + podName + " has the right image " + busyboxImage)
-			pod, err := c.CoreV1().Pods(ns).Get(podName, metav1.GetOptions{})
+			pod, err := c.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting deployment %s: %v", podName, err)
 			}
@@ -1546,7 +1548,7 @@ metadata:
 			Expect(runOutput).To(ContainSubstring("stdin closed"))
 
 			By("verifying the job " + jobName + " was deleted")
-			_, err := c.BatchV1().Jobs(ns).Get(jobName, metav1.GetOptions{})
+			_, err := c.BatchV1().Jobs(ns).Get(ctx, jobName, metav1.GetOptions{})
 			Expect(err).To(HaveOccurred())
 			Expect(apierrs.IsNotFound(err)).To(BeTrue())
 		})
@@ -1724,7 +1726,7 @@ metadata:
 			framework.RunKubectlOrDie("create", "quota", quotaName, "--hard=pods=1000000,services=1000000", nsFlag)
 
 			By("verifying that the quota was created")
-			quota, err := c.CoreV1().ResourceQuotas(ns).Get(quotaName, metav1.GetOptions{})
+			quota, err := c.CoreV1().ResourceQuotas(ns).Get(ctx, quotaName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting quota %s: %v", quotaName, err)
 			}
@@ -1753,7 +1755,7 @@ metadata:
 			framework.RunKubectlOrDie("create", "quota", quotaName, "--hard=pods=1000000", "--scopes=BestEffort,NotTerminating", nsFlag)
 
 			By("verifying that the quota was created")
-			quota, err := c.CoreV1().ResourceQuotas(ns).Get(quotaName, metav1.GetOptions{})
+			quota, err := c.CoreV1().ResourceQuotas(ns).Get(ctx, quotaName, metav1.GetOptions{})
 			if err != nil {
 				framework.Failf("Failed getting quota %s: %v", quotaName, err)
 			}
@@ -1998,7 +2000,7 @@ func forEachReplicationController(c clientset.Interface, ns, selectorKey, select
 	for t := time.Now(); time.Since(t) < framework.PodListTimeout; time.Sleep(framework.Poll) {
 		label := labels.SelectorFromSet(labels.Set(map[string]string{selectorKey: selectorValue}))
 		options := metav1.ListOptions{LabelSelector: label.String()}
-		rcs, err = c.CoreV1().ReplicationControllers(ns).List(options)
+		rcs, err = c.CoreV1().ReplicationControllers(ns).List(context.TODO(), options)
 		Expect(err).NotTo(HaveOccurred())
 		if len(rcs.Items) > 0 {
 			break

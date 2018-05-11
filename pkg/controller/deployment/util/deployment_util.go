@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -531,7 +532,7 @@ func GetNewReplicaSet(deployment *extensions.Deployment, c extensionsv1beta1.Ext
 // RsListFromClient returns an rsListFunc that wraps the given client.
 func RsListFromClient(c extensionsv1beta1.ExtensionsV1beta1Interface) RsListFunc {
 	return func(namespace string, options metav1.ListOptions) ([]*extensions.ReplicaSet, error) {
-		rsList, err := c.ReplicaSets(namespace).List(options)
+		rsList, err := c.ReplicaSets(namespace).List(context.TODO(), options)
 		if err != nil {
 			return nil, err
 		}

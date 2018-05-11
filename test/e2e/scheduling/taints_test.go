@@ -17,6 +17,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"context"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,16 +114,17 @@ func createPodForTaintsTest(hasToleration bool, tolerationSeconds int, podName, 
 // Creates and starts a controller (informer) that watches updates on a pod in given namespace with given name. It puts a new
 // struct into observedDeletion channel for every deletion it sees.
 func createTestController(cs clientset.Interface, observedDeletions chan struct{}, stopCh chan struct{}, podName, ns string) {
+	ctx := context.TODO()
 	_, controller := cache.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				options.FieldSelector = fields.SelectorFromSet(fields.Set{"metadata.name": podName}).String()
-				obj, err := cs.CoreV1().Pods(ns).List(options)
+				obj, err := cs.CoreV1().Pods(ns).List(ctx, options)
 				return runtime.Object(obj), err
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				options.FieldSelector = fields.SelectorFromSet(fields.Set{"metadata.name": podName}).String()
-				return cs.CoreV1().Pods(ns).Watch(options)
+				return cs.CoreV1().Pods(ns).Watch(ctx, options)
 			},
 		},
 		&v1.Pod{},

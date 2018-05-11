@@ -18,6 +18,7 @@ package common
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -57,7 +58,7 @@ func testHostIP(podClient *framework.PodClient, pod *v1.Pod) {
 	hostIPTimeout := 2 * time.Minute
 	t := time.Now()
 	for {
-		p, err := podClient.Get(pod.Name, metav1.GetOptions{})
+		p, err := podClient.Get(context.TODO(), pod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to get pod %q", pod.Name)
 		if p.Status.HostIP != "" {
 			framework.Logf("Pod %s has hostIP: %s", p.Name, p.Status.HostIP)
@@ -103,7 +104,7 @@ func getRestartDelay(podClient *framework.PodClient, podName string, containerNa
 	beginTime := time.Now()
 	for time.Since(beginTime) < (2 * maxBackOffTolerance) { // may just miss the 1st MaxContainerBackOff delay
 		time.Sleep(time.Second)
-		pod, err := podClient.Get(podName, metav1.GetOptions{})
+		pod, err := podClient.Get(context.TODO(), podName, metav1.GetOptions{})
 		framework.ExpectNoError(err, fmt.Sprintf("getting pod %s", podName))
 		status, ok := podutil.GetContainerStatus(pod.Status.ContainerStatuses, containerName)
 		if !ok {
@@ -124,6 +125,7 @@ func getRestartDelay(podClient *framework.PodClient, podName string, containerNa
 var _ = framework.KubeDescribe("Pods", func() {
 	f := framework.NewDefaultFramework("pods")
 	var podClient *framework.PodClient
+	ctx := context.TODO()
 	BeforeEach(func() {
 		podClient = f.PodClient()
 	})
@@ -180,14 +182,14 @@ var _ = framework.KubeDescribe("Pods", func() {
 		By("setting up watch")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err := podClient.List(options)
+		pods, err := podClient.List(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 		Expect(len(pods.Items)).To(Equal(0))
 		options = metav1.ListOptions{
 			LabelSelector:   selector.String(),
 			ResourceVersion: pods.ListMeta.ResourceVersion,
 		}
-		w, err := podClient.Watch(options)
+		w, err := podClient.Watch(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to set up watch")
 
 		By("submitting the pod to kubernetes")
@@ -196,7 +198,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		By("verifying the pod is in kubernetes")
 		selector = labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options = metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err = podClient.List(options)
+		pods, err = podClient.List(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 		Expect(len(pods.Items)).To(Equal(1))
 
@@ -214,12 +216,12 @@ var _ = framework.KubeDescribe("Pods", func() {
 		// may be carried out immediately rather than gracefully.
 		framework.ExpectNoError(f.WaitForPodRunning(pod.Name))
 		// save the running pod
-		pod, err = podClient.Get(pod.Name, metav1.GetOptions{})
+		pod, err = podClient.Get(ctx, pod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "failed to GET scheduled pod")
 		framework.Logf("running pod: %#v", pod)
 
 		By("deleting the pod gracefully")
-		err = podClient.Delete(pod.Name, metav1.NewDeleteOptions(30))
+		err = podClient.Delete(ctx, pod.Name, metav1.NewDeleteOptions(30))
 		Expect(err).NotTo(HaveOccurred(), "failed to delete pod")
 
 		By("verifying the kubelet observed the termination notice")
@@ -271,7 +273,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 
 		selector = labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options = metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err = podClient.List(options)
+		pods, err = podClient.List(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 		Expect(len(pods.Items)).To(Equal(0))
 	})
@@ -308,7 +310,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		By("verifying the pod is in kubernetes")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err := podClient.List(options)
+		pods, err := podClient.List(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 		Expect(len(pods.Items)).To(Equal(1))
 
@@ -323,7 +325,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		By("verifying the updated pod is in kubernetes")
 		selector = labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options = metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err = podClient.List(options)
+		pods, err = podClient.List(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 		Expect(len(pods.Items)).To(Equal(1))
 		framework.Logf("Pod update OK")
@@ -363,7 +365,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		By("verifying the pod is in kubernetes")
 		selector := labels.SelectorFromSet(labels.Set(map[string]string{"time": value}))
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		pods, err := podClient.List(options)
+		pods, err := podClient.List(ctx, options)
 		Expect(err).NotTo(HaveOccurred(), "failed to query for pods")
 		Expect(len(pods.Items)).To(Equal(1))
 
@@ -427,7 +429,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 				},
 			},
 		}
-		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(svc)
+		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(ctx, svc)
 		Expect(err).NotTo(HaveOccurred(), "failed to create service")
 
 		// Make a client pod that verifies that it has the service environment variables.

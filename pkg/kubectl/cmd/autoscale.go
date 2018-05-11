@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/golang/glog"
@@ -254,7 +255,7 @@ func (o *AutoscaleOptions) Run() error {
 			return err
 		}
 
-		actualHPA, err := o.HPAClient.HorizontalPodAutoscalers(o.namespace).Create(hpa)
+		actualHPA, err := o.HPAClient.HorizontalPodAutoscalers(o.namespace).Create(context.TODO(), hpa)
 		if err != nil {
 			return err
 		}

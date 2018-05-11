@@ -17,6 +17,7 @@ limitations under the License.
 package network
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ const dnsTestServiceName = "dns-test-service"
 
 var _ = SIGDescribe("DNS", func() {
 	f := framework.NewDefaultFramework("dns")
+	ctx := context.TODO()
 
 	/*
 	   Testname: dns-for-clusters
@@ -77,21 +79,21 @@ var _ = SIGDescribe("DNS", func() {
 			"dns-test": "true",
 		}
 		headlessService := framework.CreateServiceSpec(dnsTestServiceName, "", true, testServiceSelector)
-		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(headlessService)
+		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(ctx, headlessService)
 		Expect(err).NotTo(HaveOccurred())
 		defer func() {
 			By("deleting the test headless service")
 			defer GinkgoRecover()
-			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(headlessService.Name, nil)
+			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(ctx, headlessService.Name, nil)
 		}()
 
 		regularService := framework.CreateServiceSpec("test-service-2", "", false, testServiceSelector)
-		regularService, err = f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(regularService)
+		regularService, err = f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(ctx, regularService)
 		Expect(err).NotTo(HaveOccurred())
 		defer func() {
 			By("deleting the test service")
 			defer GinkgoRecover()
-			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(regularService.Name, nil)
+			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(ctx, regularService.Name, nil)
 		}()
 
 		// All the names we need to be able to resolve.
@@ -127,12 +129,12 @@ var _ = SIGDescribe("DNS", func() {
 		serviceName := "dns-test-service-2"
 		podHostname := "dns-querier-2"
 		headlessService := framework.CreateServiceSpec(serviceName, "", true, testServiceSelector)
-		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(headlessService)
+		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(ctx, headlessService)
 		Expect(err).NotTo(HaveOccurred())
 		defer func() {
 			By("deleting the test headless service")
 			defer GinkgoRecover()
-			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(headlessService.Name, nil)
+			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(ctx, headlessService.Name, nil)
 		}()
 
 		hostFQDN := fmt.Sprintf("%s.%s.%s.svc.cluster.local", podHostname, serviceName, f.Namespace.Name)
@@ -158,12 +160,12 @@ var _ = SIGDescribe("DNS", func() {
 		By("Creating a test externalName service")
 		serviceName := "dns-test-service-3"
 		externalNameService := framework.CreateServiceSpec(serviceName, "foo.example.com", false, nil)
-		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(externalNameService)
+		_, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Create(ctx, externalNameService)
 		Expect(err).NotTo(HaveOccurred())
 		defer func() {
 			By("deleting the test externalName service")
 			defer GinkgoRecover()
-			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(externalNameService.Name, nil)
+			f.ClientSet.CoreV1().Services(f.Namespace.Name).Delete(ctx, externalNameService.Name, nil)
 		}()
 
 		hostFQDN := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, f.Namespace.Name)
@@ -213,7 +215,7 @@ var _ = SIGDescribe("DNS", func() {
 		By("creating a third pod to probe DNS")
 		pod3 := createDNSPod(f.Namespace.Name, wheezyProbeCmd, jessieProbeCmd, dnsTestPodHostName, dnsTestServiceName)
 
-		svc, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Get(externalNameService.Name, metav1.GetOptions{})
+		svc, err := f.ClientSet.CoreV1().Services(f.Namespace.Name).Get(ctx, externalNameService.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		validateTargetedProbeOutput(f, pod3, []string{wheezyFileName, jessieFileName}, svc.Spec.ClusterIP)
@@ -229,19 +231,19 @@ var _ = SIGDescribe("DNS", func() {
 		testServerPod := generateDNSServerPod(map[string]string{
 			testDNSNameFull: testInjectedIP,
 		})
-		testServerPod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(testServerPod)
+		testServerPod, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(ctx, testServerPod)
 		Expect(err).NotTo(HaveOccurred(), "failed to create pod %s", testServerPod.Name)
 		framework.Logf("Created pod %v", testServerPod)
 		defer func() {
 			framework.Logf("Deleting pod %s...", testServerPod.Name)
-			if err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(testServerPod.Name, metav1.NewDeleteOptions(0)); err != nil {
+			if err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(ctx, testServerPod.Name, metav1.NewDeleteOptions(0)); err != nil {
 				framework.Failf("Failed to delete pod %s: %v", testServerPod.Name, err)
 			}
 		}()
 		Expect(f.WaitForPodRunning(testServerPod.Name)).NotTo(HaveOccurred(), "failed to wait for pod %s to be running", testServerPod.Name)
 
 		// Retrieve server pod IP.
-		testServerPod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(testServerPod.Name, metav1.GetOptions{})
+		testServerPod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(ctx, testServerPod.Name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "failed to get pod %v", testServerPod.Name)
 		testServerIP := testServerPod.Status.PodIP
 		framework.Logf("testServerIP is %s", testServerIP)
@@ -260,12 +262,12 @@ var _ = SIGDescribe("DNS", func() {
 				},
 			},
 		}
-		testUtilsPod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(testUtilsPod)
+		testUtilsPod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(ctx, testUtilsPod)
 		Expect(err).NotTo(HaveOccurred(), "failed to create pod %s", testUtilsPod.Name)
 		framework.Logf("Created pod %v", testUtilsPod)
 		defer func() {
 			framework.Logf("Deleting pod %s...", testUtilsPod.Name)
-			if err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(testUtilsPod.Name, metav1.NewDeleteOptions(0)); err != nil {
+			if err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(ctx, testUtilsPod.Name, metav1.NewDeleteOptions(0)); err != nil {
 				framework.Failf("Failed to delete pod %s: %v", testUtilsPod.Name, err)
 			}
 		}()

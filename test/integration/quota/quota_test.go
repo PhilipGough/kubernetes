@@ -17,6 +17,7 @@ limitations under the License.
 package quota
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -100,7 +101,7 @@ func TestQuota(t *testing.T) {
 	go rm.Run(3, controllerCh)
 
 	discoveryFunc := clientset.Discovery().ServerPreferredNamespacedResources
-	listerFuncForResource := generic.ListerFuncForResourceFunc(informers.ForResource)
+	listerFuncForResource := generic.ListerFuncForResourceFunc(context.TODO(), informers.ForResource)
 	qc := quotainstall.NewQuotaConfigurationForControllers(listerFuncForResource)
 	informersStarted := make(chan struct{})
 	resourceQuotaControllerOptions := &resourcequotacontroller.ResourceQuotaControllerOptions{
@@ -152,12 +153,13 @@ func TestQuota(t *testing.T) {
 }
 
 func waitForQuota(t *testing.T, quota *v1.ResourceQuota, clientset *clientset.Clientset) {
-	w, err := clientset.Core().ResourceQuotas(quota.Namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
+	ctx := context.TODO()
+	w, err := clientset.Core().ResourceQuotas(quota.Namespace).Watch(ctx, metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if _, err := clientset.Core().ResourceQuotas(quota.Namespace).Create(quota); err != nil {
+	if _, err := clientset.Core().ResourceQuotas(quota.Namespace).Create(ctx, quota); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -183,6 +185,7 @@ func waitForQuota(t *testing.T, quota *v1.ResourceQuota, clientset *clientset.Cl
 
 func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
 	target := int32(100)
+	ctx := context.TODO()
 	rc := &v1.ReplicationController{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -209,12 +212,12 @@ func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
 		},
 	}
 
-	w, err := clientset.Core().ReplicationControllers(namespace).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
+	w, err := clientset.Core().ReplicationControllers(namespace).Watch(ctx, metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if _, err := clientset.Core().ReplicationControllers(namespace).Create(rc); err != nil {
+	if _, err := clientset.Core().ReplicationControllers(namespace).Create(ctx, rc); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -236,12 +239,13 @@ func scale(t *testing.T, namespace string, clientset *clientset.Clientset) {
 		return false, nil
 	})
 	if err != nil {
-		pods, _ := clientset.Core().Pods(namespace).List(metav1.ListOptions{LabelSelector: labels.Everything().String(), FieldSelector: fields.Everything().String()})
+		pods, _ := clientset.Core().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.Everything().String(), FieldSelector: fields.Everything().String()})
 		t.Fatalf("unexpected error: %v, ended with %v pods", err, len(pods.Items))
 	}
 }
 
 func TestQuotaLimitedResourceDenial(t *testing.T) {
+	ctx := context.TODO()
 	// Set up a master
 	h := &framework.MasterHolder{Initialized: make(chan struct{})}
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -295,7 +299,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 	go rm.Run(3, controllerCh)
 
 	discoveryFunc := clientset.Discovery().ServerPreferredNamespacedResources
-	listerFuncForResource := generic.ListerFuncForResourceFunc(informers.ForResource)
+	listerFuncForResource := generic.ListerFuncForResourceFunc(ctx, informers.ForResource)
 	qc := quotainstall.NewQuotaConfigurationForControllers(listerFuncForResource)
 	informersStarted := make(chan struct{})
 	resourceQuotaControllerOptions := &resourcequotacontroller.ResourceQuotaControllerOptions{
@@ -337,7 +341,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 			},
 		},
 	}
-	if _, err := clientset.Core().Pods(ns.Name).Create(pod); err == nil {
+	if _, err := clientset.Core().Pods(ns.Name).Create(ctx, pod); err == nil {
 		t.Fatalf("expected error for insufficient quota")
 	}
 
@@ -360,7 +364,7 @@ func TestQuotaLimitedResourceDenial(t *testing.T) {
 	// attempt to create a new pod once the quota is propagated
 	err = wait.PollImmediate(5*time.Second, time.Minute, func() (bool, error) {
 		// retry until we succeed (to allow time for all changes to propagate)
-		if _, err := clientset.Core().Pods(ns.Name).Create(pod); err == nil {
+		if _, err := clientset.Core().Pods(ns.Name).Create(ctx, pod); err == nil {
 			return true, nil
 		}
 		return false, nil

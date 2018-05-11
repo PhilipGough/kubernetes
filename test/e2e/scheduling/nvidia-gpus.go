@@ -17,6 +17,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"context"
 	"os"
 	"strings"
 	"time"
@@ -70,7 +71,7 @@ func makeCudaAdditionDevicePluginTestPod() *v1.Pod {
 }
 
 func isClusterRunningCOS(f *framework.Framework) bool {
-	nodeList, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "getting node list")
 	for _, node := range nodeList.Items {
 		if !strings.Contains(node.Status.NodeInfo.OSImage, cosOSImage) {
@@ -82,7 +83,7 @@ func isClusterRunningCOS(f *framework.Framework) bool {
 
 func areGPUsAvailableOnAllSchedulableNodes(f *framework.Framework) bool {
 	framework.Logf("Getting list of Nodes from API server")
-	nodeList, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "getting node list")
 	for _, node := range nodeList.Items {
 		if node.Spec.Unschedulable {
@@ -99,7 +100,7 @@ func areGPUsAvailableOnAllSchedulableNodes(f *framework.Framework) bool {
 }
 
 func getGPUsAvailable(f *framework.Framework) int64 {
-	nodeList, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := f.ClientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	framework.ExpectNoError(err, "getting node list")
 	var gpusAvailable int64
 	for _, node := range nodeList.Items {
@@ -133,7 +134,7 @@ func SetupNVIDIAGPUNode(f *framework.Framework, setupResourceGatherer bool) *fra
 	ds, err := framework.DsFromManifest(dsYamlUrl)
 	Expect(err).NotTo(HaveOccurred())
 	ds.Namespace = f.Namespace.Name
-	_, err = f.ClientSet.ExtensionsV1beta1().DaemonSets(f.Namespace.Name).Create(ds)
+	_, err = f.ClientSet.ExtensionsV1beta1().DaemonSets(f.Namespace.Name).Create(context.TODO(), ds)
 	framework.ExpectNoError(err, "failed to create nvidia-driver-installer daemonset")
 	framework.Logf("Successfully created daemonset to install Nvidia drivers.")
 

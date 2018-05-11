@@ -17,6 +17,7 @@ limitations under the License.
 package checkpoint
 
 import (
+	"context"
 	"fmt"
 
 	apiv1 "k8s.io/api/core/v1"
@@ -143,7 +144,7 @@ func (r *remoteConfigMap) Download(client clientset.Interface) (Payload, string,
 	utillog.Infof("attempting to download ConfigMap with UID %q", uid)
 
 	// get the ConfigMap via namespace/name, there doesn't seem to be a way to get it by UID
-	cm, err := client.CoreV1().ConfigMaps(r.source.ConfigMap.Namespace).Get(r.source.ConfigMap.Name, metav1.GetOptions{})
+	cm, err := client.CoreV1().ConfigMaps(r.source.ConfigMap.Namespace).Get(context.TODO(), r.source.ConfigMap.Name, metav1.GetOptions{})
 	if err != nil {
 		reason = fmt.Sprintf(status.FailSyncReasonDownloadFmt, r.APIPath())
 		return nil, reason, fmt.Errorf("%s, error: %v", reason, err)
