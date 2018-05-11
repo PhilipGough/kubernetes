@@ -17,6 +17,7 @@ limitations under the License.
 package deployment
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -112,7 +113,7 @@ func (dc *DeploymentController) syncRolloutStatus(allRSs []*extensions.ReplicaSe
 
 	newDeployment := d
 	newDeployment.Status = newStatus
-	_, err := dc.client.ExtensionsV1beta1().Deployments(newDeployment.Namespace).UpdateStatus(newDeployment)
+	_, err := dc.client.ExtensionsV1beta1().Deployments(newDeployment.Namespace).UpdateStatus(context.TODO(),newDeployment)
 	return err
 }
 

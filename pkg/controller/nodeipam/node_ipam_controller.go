@@ -17,6 +17,7 @@ limitations under the License.
 package nodeipam
 
 import (
+	"context"
 	"net"
 	"time"
 
@@ -159,8 +160,8 @@ func NewNodeIpamController(
 		}
 	}
 
-	ic.nodeLister = nodeInformer.Lister()
-	ic.nodeInformerSynced = nodeInformer.Informer().HasSynced
+	ic.nodeLister = nodeInformer.Lister(context.TODO())
+	ic.nodeInformerSynced = nodeInformer.Informer(context.TODO()).HasSynced
 
 	return ic, nil
 }

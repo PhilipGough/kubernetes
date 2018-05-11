@@ -17,6 +17,7 @@ limitations under the License.
 package persistentvolume
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -114,7 +115,7 @@ func newTestBinder(t *testing.T) *testEnv {
 		},
 	}
 	for _, class := range classes {
-		if err := classInformer.Informer().GetIndexer().Add(class); err != nil {
+		if err := classInformer.Informer(context.TODO()).GetIndexer().Add(class); err != nil {
 			t.Fatalf("Failed to add storage class to internal cache: %v", err)
 		}
 	}
@@ -137,7 +138,7 @@ func newTestBinder(t *testing.T) *testEnv {
 		binder:           binder,
 		internalBinder:   internalBinder,
 		internalPVCache:  internalPVCache,
-		internalPVCCache: pvcInformer.Informer().GetIndexer(),
+		internalPVCCache: pvcInformer.Informer(context.TODO()).GetIndexer(),
 	}
 }
 

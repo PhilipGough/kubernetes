@@ -21,6 +21,7 @@ caches in sync with the "ground truth".
 package populator
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -436,7 +437,7 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(
 func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(
 	namespace string, claimName string) (string, types.UID, error) {
 	pvc, err :=
-		dswp.kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(claimName, metav1.GetOptions{})
+		dswp.kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(),claimName, metav1.GetOptions{})
 	if err != nil || pvc == nil {
 		return "", "", fmt.Errorf(
 			"failed to fetch PVC %s/%s from API server. err=%v",
@@ -482,7 +483,7 @@ func (dswp *desiredStateOfWorldPopulator) getPVSpec(
 	name string,
 	pvcReadOnly bool,
 	expectedClaimUID types.UID) (*volume.Spec, string, error) {
-	pv, err := dswp.kubeClient.CoreV1().PersistentVolumes().Get(name, metav1.GetOptions{})
+	pv, err := dswp.kubeClient.CoreV1().PersistentVolumes().Get(context.TODO(),name, metav1.GetOptions{})
 	if err != nil || pv == nil {
 		return nil, "", fmt.Errorf(
 			"failed to fetch PV %q from API server. err=%v", name, err)

@@ -17,6 +17,7 @@ limitations under the License.
 package kubeletconfig
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -90,7 +91,7 @@ func (cc *Controller) syncConfigSource(client clientset.Interface, eventClient v
 		// because the event recorder won't flush its queue before we exit (we'd lose the event)
 		event := eventf(nodeName, apiv1.EventTypeNormal, KubeletConfigChangedEventReason, EventMessageFmt, path)
 		glog.V(3).Infof("Event(%#v): type: '%v' reason: '%v' %v", event.InvolvedObject, event.Type, event.Reason, event.Message)
-		if _, err := eventClient.Events(apiv1.NamespaceDefault).Create(event); err != nil {
+		if _, err := eventClient.Events(apiv1.NamespaceDefault).Create(context.TODO(),event); err != nil {
 			utillog.Errorf("failed to send event, error: %v", err)
 		}
 		os.Exit(0)

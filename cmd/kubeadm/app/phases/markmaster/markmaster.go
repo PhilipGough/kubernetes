@@ -17,6 +17,7 @@ limitations under the License.
 package markmaster
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -45,7 +46,7 @@ func MarkMaster(client clientset.Interface, masterName string, taint bool) error
 	// Loop on every falsy return. Return with an error if raised. Exit successfully if true is returned.
 	return wait.Poll(kubeadmconstants.APICallRetryInterval, kubeadmconstants.MarkMasterTimeout, func() (bool, error) {
 		// First get the node object
-		n, err := client.CoreV1().Nodes().Get(masterName, metav1.GetOptions{})
+		n, err := client.CoreV1().Nodes().Get(context.TODO(),masterName, metav1.GetOptions{})
 		if err != nil {
 			return false, nil
 		}
@@ -74,7 +75,7 @@ func MarkMaster(client clientset.Interface, masterName string, taint bool) error
 			return false, err
 		}
 
-		if _, err := client.CoreV1().Nodes().Patch(n.Name, types.StrategicMergePatchType, patchBytes); err != nil {
+		if _, err := client.CoreV1().Nodes().Patch(context.TODO(),n.Name, types.StrategicMergePatchType, patchBytes); err != nil {
 			if apierrs.IsConflict(err) {
 				fmt.Println("[markmaster] Temporarily unable to update master node metadata due to conflict (will retry)")
 				return false, nil
